@@ -124,12 +124,58 @@ body.stage-locked{overflow:hidden}
 .del-btn{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:15px}
 .del-btn:hover{color:var(--danger)}
 .hint{font-size:12px;color:var(--text-muted);margin-top:2px}
-/* Fullscreen floating overlay toolbar */
-.fs-toolbar{display:none;position:absolute;left:0;right:0;bottom:0;background:rgba(10,13,22,0.88);backdrop-filter:blur(6px);padding:10px 12px;flex-direction:column;gap:8px;z-index:50;border-top:0.5px solid var(--border-strong)}
-#stage.maximized .fs-toolbar{display:flex}
-.fs-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.fs-row .chip-row{flex-wrap:nowrap;overflow-x:auto;max-width:100%}
-.fs-pending{font-size:12px;color:var(--text-secondary)}
+/* Fullscreen HUD — overlay controls on transparent gradient scrims, not a
+   solid bar. The whole HUD auto-hides when idle so the action is never
+   blocked; pointer move / tap / keypress brings it back. */
+.fs-hud{display:none;position:absolute;inset:0;z-index:50;pointer-events:none;
+  opacity:1;transition:opacity 0.25s ease}
+#stage.maximized .fs-hud{display:block}
+.fs-hud.dim{opacity:0}
+.fs-hud > *{pointer-events:auto}
+/* a hidden HUD must not swallow clicks */
+.fs-hud.dim > *{pointer-events:none}
+
+.hud-top{position:absolute;top:0;left:0;right:0;display:flex;align-items:flex-start;gap:12px;
+  padding:14px 16px 32px;background:linear-gradient(to bottom,rgba(0,0,0,0.72),transparent)}
+.hud-title{flex:1;min-width:0;color:#fff;font-family:'Oswald',sans-serif;font-weight:600;
+  font-size:15px;letter-spacing:0.02em;text-transform:uppercase;text-shadow:0 1px 3px rgba(0,0,0,0.8);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hud-title .capdate{display:block;font-family:'Work Sans',sans-serif;font-weight:400;
+  text-transform:none;letter-spacing:0;font-size:11px;color:rgba(255,255,255,0.6);margin-top:1px}
+.hud-exit{flex-shrink:0;background:rgba(255,60,176,0.18);border:0.5px solid var(--fuchsia);
+  color:#fff;border-radius:999px;padding:7px 14px;cursor:pointer;font-family:inherit;font-size:13px;
+  display:inline-flex;align-items:center;gap:6px;backdrop-filter:blur(8px)}
+.hud-exit:hover{background:var(--fuchsia);color:#1a0010}
+
+.hud-bottom{position:absolute;left:0;right:0;bottom:0;padding:40px 16px 16px;
+  background:linear-gradient(to top,rgba(0,0,0,0.82),rgba(0,0,0,0.4) 55%,transparent);
+  display:flex;flex-direction:column;gap:10px}
+.hud-scrub{position:relative;height:6px;background:rgba(255,255,255,0.18);border-radius:3px;cursor:pointer}
+.hud-scrub-fill{position:absolute;left:0;top:0;bottom:0;background:var(--lime);border-radius:3px;pointer-events:none;opacity:0.55}
+.hud-scrub-playhead{position:absolute;top:-4px;width:3px;height:14px;background:var(--lime);border-radius:2px;pointer-events:none;box-shadow:0 0 6px var(--lime)}
+/* The HUD scrub grows a little on hover so it's grabbable, like a video player */
+.hud-scrub:hover{height:9px;margin-top:-1.5px}
+.hud-transport{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.hud-btn{background:rgba(23,28,51,0.72);border:0.5px solid rgba(255,255,255,0.14);border-radius:8px;
+  padding:8px 12px;color:#fff;cursor:pointer;font-family:inherit;font-size:13px;line-height:1;
+  display:inline-flex;align-items:center;gap:5px;backdrop-filter:blur(8px)}
+.hud-btn:hover{border-color:var(--fuchsia);color:var(--fuchsia-text)}
+.hud-btn.lime{border-color:var(--lime);color:var(--lime-text);background:rgba(182,255,60,0.12)}
+.hud-btn.solid{background:var(--lime);color:#06260a;border-color:var(--lime);font-weight:600}
+.hud-btn.play{min-width:46px;justify-content:center;font-size:15px}
+.hud-readout{color:rgba(255,255,255,0.85);font-family:'IBM Plex Mono',monospace;font-size:12px;
+  margin-left:auto;text-shadow:0 1px 2px rgba(0,0,0,0.8)}
+.hud-readout .set{color:var(--lime-text)}
+/* Tag tray: collapsed by default so tagging UI isn't in the way while watching */
+.hud-tray{display:none;flex-direction:column;gap:8px;padding-top:4px;border-top:0.5px solid rgba(255,255,255,0.12);margin-top:2px}
+.fs-hud.tray-open .hud-tray{display:flex}
+.fs-hud.tray-open .hud-tray-toggle .chev{transform:rotate(180deg)}
+.hud-tray-label{font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.55)}
+.hud-tray .chip-row{flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px}
+.hud-tray .chip{background:rgba(23,28,51,0.72);white-space:nowrap}
+.hud-tray-toggle .chev{display:inline-block;transition:transform 0.18s ease}
+.hud-note-row{display:flex;gap:6px;align-items:center}
+.hud-note-row .text-input{flex:1;background:rgba(23,28,51,0.8);min-width:0}
 </style>
 
 <h2 class="sr-only">Clip marker: scrub basketball game footage and tag highlight moments by player</h2>
@@ -193,37 +239,45 @@ body.stage-locked{overflow:hidden}
     <div id="clipTitle">No clip loaded — drop a proxy clip in, or use the ↑ icon above</div>
     <div id="stage">
       <video id="video" controls preload="metadata"></video>
-      <div class="fs-toolbar" id="fsToolbar">
-        <div class="fs-row">
-          <button class="btn" id="fsPrevClipBtn" title="Previous clip (↑)">‹ Prev</button>
-          <button class="btn" id="fsPlayBtn">▶</button>
-          <button class="btn" id="fsNextClipBtn" title="Next clip (↓)">Next ›</button>
-          <span class="spacer"></span>
-          <button class="btn" id="fsExitBtn">⤢ Exit fullscreen</button>
+      <div class="fs-hud" id="fsHud">
+        <div class="hud-top">
+          <div class="hud-title" id="fsClipName">No clip</div>
+          <button class="hud-exit" id="fsExitBtn" title="Exit fullscreen (Esc)">✕ Exit</button>
         </div>
-        <div class="fs-row">
-          <button class="btn accent" id="fsInZeroBtn">⇤ 0:00</button>
-          <button class="btn accent" id="fsMarkInBtn">Set in (I)</button>
-          <button class="btn accent" id="fsMarkOutBtn">Set out (O)</button>
-          <button class="btn accent" id="fsOutEndBtn">End ⇥</button>
-          <span class="fs-pending">In <span id="fsPendingIn" class="mono">—</span> · Out <span id="fsPendingOut" class="mono">—</span></span>
-        </div>
-        <div class="fs-row">
-          <div class="chip-row rosterChipsTarget" id="rosterChipsFs"></div>
-        </div>
-        <div class="fs-row">
-          <div class="chip-row categoryChipsTarget" id="categoryChipsFs"></div>
-        </div>
-        <div class="fs-row">
-          <div class="chip-row zoomChipsTarget" id="zoomChipsFs"></div>
-        </div>
-        <div class="fs-row">
-          <input id="noteInputFs" class="text-input noteInputTarget" type="text" placeholder="Note — press Enter to attach">
-          <button class="btn" id="fsAddNoteBtn" title="Attach this note (Enter)">➕</button>
-          <button class="btn solid" id="fsAddMarkBtn">✓ Add mark</button>
-        </div>
-        <div class="fs-row">
-          <div class="chip-row pendingNotesTarget" id="pendingNotesChipsFs"></div>
+        <div class="hud-bottom">
+          <div class="hud-scrub" id="fsScrubTrack">
+            <div class="hud-scrub-fill" id="fsScrubFill"></div>
+            <div class="hud-scrub-playhead" id="fsScrubPlayhead"></div>
+          </div>
+          <div class="hud-transport">
+            <button class="hud-btn" id="fsPrevClipBtn" title="Previous clip (↑)">‹</button>
+            <button class="hud-btn play" id="fsPlayBtn" title="Play/pause (space)">▶</button>
+            <button class="hud-btn" id="fsNextClipBtn" title="Next clip (↓)">›</button>
+            <button class="hud-btn lime" id="fsInZeroBtn" title="In at 0:00">⇤</button>
+            <button class="hud-btn lime" id="fsMarkInBtn" title="Set in (I)">In</button>
+            <button class="hud-btn lime" id="fsMarkOutBtn" title="Set out (O)">Out</button>
+            <button class="hud-btn lime" id="fsOutEndBtn" title="Out at end">⇥</button>
+            <button class="hud-btn" id="fsTrayToggle" title="Tag this mark">
+              <span class="hud-tray-toggle" style="display:inline-flex;gap:5px;align-items:center">Tag <span class="chev">▾</span></span>
+            </button>
+            <span class="hud-readout">In <span id="fsPendingIn" class="set">—</span> · Out <span id="fsPendingOut" class="set">—</span></span>
+          </div>
+          <div class="hud-tray">
+            <span class="hud-tray-label">Player(s)</span>
+            <div class="chip-row rosterChipsTarget" id="rosterChipsFs"></div>
+            <span class="hud-tray-label">Category &amp; zoom</span>
+            <div class="chip-row" style="flex-wrap:nowrap;overflow-x:auto">
+              <span class="categoryChipsTarget" style="display:inline-flex;gap:6px"></span>
+              <span style="width:1px;background:rgba(255,255,255,0.15);margin:0 4px;flex-shrink:0"></span>
+              <span class="zoomChipsTarget" style="display:inline-flex;gap:6px"></span>
+            </div>
+            <div class="hud-note-row">
+              <input id="noteInputFs" class="text-input noteInputTarget" type="text" placeholder="Note — Enter to attach">
+              <button class="hud-btn" id="fsAddNoteBtn" title="Attach note (Enter)">➕</button>
+              <button class="hud-btn solid" id="fsAddMarkBtn">✓ Add mark</button>
+            </div>
+            <div class="chip-row pendingNotesTarget" id="pendingNotesChipsFs"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -701,6 +755,9 @@ body.stage-locked{overflow:hidden}
     if(c.url) video.src = c.url;
     const capStr = c.capturedAt ? ` <span class="capdate">· ${fmtCapturedAt(c.capturedAt)} (file date)</span>` : '';
     $('clipTitle').innerHTML = c.name + (c.fps ? ` — ${c.fps}fps` : '') + capStr;
+    // Mirror the clip name into the fullscreen HUD title (the fullscreen
+    // view has no room for the main #clipTitle, so it was showing nothing).
+    $('fsClipName').innerHTML = c.name + (c.fps ? ` — ${c.fps}fps` : '') + capStr;
     pendingIn = null; pendingOut = null;
     updatePendingLabels();
     renderClipList();
@@ -800,14 +857,18 @@ body.stage-locked{overflow:hidden}
     const pct = video.duration ? (video.currentTime/video.duration*100) : 0;
     $('scrubFill').style.width = pct + '%';
     $('scrubPlayhead').style.left = pct + '%';
+    $('fsScrubFill').style.width = pct + '%';
+    $('fsScrubPlayhead').style.left = pct + '%';
   });
 
-  $('scrubTrack').addEventListener('click', e => {
+  function scrubFromEvent(e){
     if(!video.duration) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    const pct = (e.clientX - rect.left) / rect.width;
+    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     video.currentTime = pct * video.duration;
-  });
+  }
+  $('scrubTrack').addEventListener('click', scrubFromEvent);
+  $('fsScrubTrack').addEventListener('click', scrubFromEvent);
 
   function togglePlay(){ video.paused ? video.play() : video.pause(); }
   $('playBtn').addEventListener('click', togglePlay);
@@ -887,16 +948,45 @@ body.stage-locked{overflow:hidden}
   // what this page does. Instead this pins #stage to the full viewport
   // with CSS (position:fixed, inset:0, high z-index) -- same visual
   // result, no permission required, works inside the sandbox.
+  const fsHud = $('fsHud');
+  let hudHideTimer = null;
+  // Auto-hide the HUD after a few idle seconds so it never blocks the action;
+  // any pointer move, tap, or keypress wakes it. While the tag tray is open
+  // the user is actively tagging, so we hold it visible.
+  function wakeHud(){
+    if(!stage.classList.contains('maximized')) return;
+    fsHud.classList.remove('dim');
+    clearTimeout(hudHideTimer);
+    if(fsHud.classList.contains('tray-open')) return;
+    hudHideTimer = setTimeout(() => { fsHud.classList.add('dim'); }, 2800);
+  }
   function enterFullscreen(){
     stage.classList.add('maximized');
     document.body.classList.add('stage-locked');
+    // The HUD provides its own play + scrub, so drop the native video
+    // controls in fullscreen to avoid two control bars fighting at the
+    // bottom. Restored on exit for the inline view.
+    video.removeAttribute('controls');
+    wakeHud();
   }
   function exitFullscreen(){
     stage.classList.remove('maximized');
+    fsHud.classList.remove('dim');
+    fsHud.classList.remove('tray-open');
     document.body.classList.remove('stage-locked');
+    video.setAttribute('controls', '');
+    clearTimeout(hudHideTimer);
   }
   $('fsEnterBtn').addEventListener('click', enterFullscreen);
   $('fsExitBtn').addEventListener('click', exitFullscreen);
+  $('fsTrayToggle').addEventListener('click', () => {
+    const open = fsHud.classList.toggle('tray-open');
+    if(open){ clearTimeout(hudHideTimer); fsHud.classList.remove('dim'); }
+    else wakeHud();
+  });
+  // Wake on interaction anywhere over the maximized stage.
+  ['pointermove','pointerdown','touchstart'].forEach(evt =>
+    stage.addEventListener(evt, wakeHud, {passive:true}));
 
   function renderMarks(){
     const body = $('marksBody');
@@ -1073,6 +1163,7 @@ body.stage-locked{overflow:hidden}
   document.addEventListener('keydown', e => {
     if(e.key === 'Escape' && stage.classList.contains('maximized')){ exitFullscreen(); return; }
     if(e.target.tagName === 'INPUT') return;
+    wakeHud();
     if(e.code === 'Space'){ e.preventDefault(); togglePlay(); }
     if(e.key === 'i' || e.key === 'I') doMarkIn();
     if(e.key === 'o' || e.key === 'O') doMarkOut();
