@@ -1,0 +1,685 @@
+<title>Reel bin</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Work+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F5F4F1; --surface:#FFFFFF; --surface-2:#ECE9E3;
+  --border:#DEDAD1; --border-strong:#BFB9AC;
+  --text:#201F1D; --text-secondary:#5B564C; --text-muted:#8B8578;
+  --accent:#C2540E; --accent-bg:#F4DFCF; --accent-text:#7A3607;
+  --danger:#B23B3B;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1A1815; --surface:#221F1A; --surface-2:#2A2620;
+    --border:#39352D; --border-strong:#4A453A;
+    --text:#EFEAE2; --text-secondary:#B3AB9C; --text-muted:#847C6D;
+    --accent:#F08A34; --accent-bg:#3A2814; --accent-text:#F5B378;
+    --danger:#E06060;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1A1815; --surface:#221F1A; --surface-2:#2A2620;
+  --border:#39352D; --border-strong:#4A453A;
+  --text:#EFEAE2; --text-secondary:#B3AB9C; --text-muted:#847C6D;
+  --accent:#F08A34; --accent-bg:#3A2814; --accent-text:#F5B378;
+  --danger:#E06060;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Work Sans',system-ui,sans-serif;margin:0;padding:20px 16px;font-size:14px}
+h1,h2,.display{font-family:'Oswald',system-ui,sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:0.03em}
+.mono{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+#app{max-width:960px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.masthead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.masthead h1{font-size:22px;margin:0;color:var(--text)}
+.masthead .sub{color:var(--text-secondary);font-size:13px}
+.panel{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:14px 16px}
+.panel-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.panel-head .label{font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);flex:1}
+.toprow{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:640px){.toprow{grid-template-columns:1fr}}
+.iconbtn{background:none;border:0.5px solid var(--border);border-radius:8px;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-secondary);font-size:16px;line-height:1}
+.iconbtn:hover{border-color:var(--border-strong);color:var(--text)}
+.roster-list,.clip-list{display:flex;flex-direction:column;gap:6px;max-height:190px;overflow-y:auto}
+.roster-row{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:8px}
+.swatch{width:12px;height:12px;border-radius:3px;flex-shrink:0;border:0.5px solid var(--border-strong)}
+.roster-row input.name-input{flex:1;border:none;background:none;color:var(--text);font-size:13px;padding:2px;font-family:inherit}
+.roster-row input.num-input{width:36px;border:none;background:var(--surface-2);border-radius:4px;text-align:center;color:var(--text);font-size:13px;font-family:'IBM Plex Mono',monospace}
+.numbadge{width:22px;height:22px;border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500}
+.team-select-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.team-select-row select{flex:1}
+.color-row{display:flex;align-items:center;gap:14px;margin-bottom:10px;flex-wrap:wrap}
+.color-field{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary)}
+.color-field input[type=color]{width:26px;height:26px;border:0.5px solid var(--border);border-radius:6px;padding:0;background:none;cursor:pointer}
+.team-name-input{font-family:'Oswald',sans-serif;font-weight:600;font-size:15px;text-transform:uppercase;letter-spacing:0.02em;border:none;background:none;color:var(--text);width:100%;margin-bottom:2px}
+.school-input{border:none;background:none;color:var(--text-secondary);font-size:12px;width:100%;margin-bottom:10px}
+.clip-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:pointer;color:var(--text-secondary);font-size:13px}
+.clip-row.active{background:var(--accent-bg);color:var(--accent-text)}
+.clip-row .status{margin-left:auto;font-size:11px;font-family:'IBM Plex Mono',monospace}
+.clip-row .flag{width:16px;text-align:center}
+.clip-remove{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:2px 4px;flex-shrink:0}
+.clip-remove:hover{color:var(--danger)}
+.clip-row.short-clip{opacity:0.55}
+.clip-row .short-badge{font-size:10px;background:var(--danger,#c0392b);color:#fff;border-radius:4px;padding:1px 4px;margin-left:4px;flex-shrink:0}
+video{width:100%;max-height:420px;background:#000;border-radius:8px;display:block}
+#clipTitle{margin-bottom:10px;color:var(--text-secondary);font-size:13px}
+.scrubwrap{margin-top:10px}
+.scrub-track{position:relative;height:18px;background:var(--surface-2);border-radius:9px;cursor:pointer;border:0.5px solid var(--border)}
+.scrub-fill{position:absolute;left:0;top:0;bottom:0;background:var(--accent-bg);border-radius:9px;pointer-events:none}
+.scrub-ticks{position:absolute;inset:0;pointer-events:none}
+.scrub-tick{position:absolute;top:2px;bottom:2px;width:1px;background:var(--border-strong)}
+.scrub-playhead{position:absolute;top:-3px;width:2px;height:24px;background:var(--accent);pointer-events:none}
+.timecodes{display:flex;justify-content:space-between;margin-top:6px;font-size:12px;color:var(--text-secondary)}
+.controls-row{display:flex;align-items:center;gap:8px;margin-top:14px;flex-wrap:wrap}
+.btn{background:var(--surface-2);border:0.5px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-size:13px;font-family:inherit}
+.btn:hover{border-color:var(--border-strong)}
+.btn.accent{color:var(--accent-text);border-color:var(--accent);background:var(--accent-bg)}
+.btn.solid{background:var(--accent);color:#fff;border-color:var(--accent)}
+.select{background:var(--surface-2);border:0.5px solid var(--border);border-radius:8px;padding:6px 8px;color:var(--text);font-size:13px;font-family:inherit}
+.spacer{flex:1}
+.mark-builder{margin-top:16px;padding-top:14px;border-top:0.5px solid var(--border);display:flex;flex-direction:column;gap:10px}
+.pending-line{font-size:13px;color:var(--text-secondary)}
+.pending-line .mono{color:var(--text)}
+.chip-row{display:flex;gap:6px;flex-wrap:wrap}
+.chip{padding:5px 11px;border-radius:14px;border:0.5px solid var(--border);cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px;color:var(--text-secondary);background:var(--surface)}
+.chip.selected{background:var(--accent-bg);color:var(--accent-text);border-color:var(--accent)}
+.text-input{background:var(--surface-2);border:0.5px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-size:13px;font-family:inherit;width:100%}
+.marks-table{width:100%;border-collapse:collapse;font-size:13px}
+.marks-table th{text-align:left;color:var(--text-muted);font-weight:400;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;padding:6px 8px;border-bottom:0.5px solid var(--border)}
+.marks-table td{padding:7px 8px;border-bottom:0.5px solid var(--border);color:var(--text)}
+.marks-table td.num{font-family:'IBM Plex Mono',monospace}
+.del-btn{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:15px}
+.del-btn:hover{color:var(--danger)}
+.hint{font-size:12px;color:var(--text-muted);margin-top:2px}
+</style>
+
+<h2 class="sr-only">Clip marker: scrub basketball game footage and tag highlight moments by player</h2>
+<div id="app">
+  <div class="masthead">
+    <h1>Reel bin</h1>
+    <span class="sub">Scrub, mark in/out points, tag the player — export when done</span>
+  </div>
+
+  <div class="toprow">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="label">Team</span>
+        <button class="iconbtn" id="addTeamBtn" aria-label="New team profile" title="New team profile">+</button>
+      </div>
+      <div class="team-select-row">
+        <select id="teamSelect" class="select"></select>
+      </div>
+      <input id="teamNameInput" class="team-name-input" placeholder="Team name">
+      <input id="teamSchoolInput" class="school-input" placeholder="School (optional)">
+      <div class="color-row">
+        <div class="color-field"><input type="color" id="homeColorInput" value="#1D3B6B"> home jersey</div>
+        <div class="color-field"><input type="color" id="awayColorInput" value="#FFFFFF"> away jersey</div>
+      </div>
+      <div class="panel-head" style="margin-bottom:6px">
+        <span class="label">Roster</span>
+        <button class="iconbtn" id="addPlayerBtn" aria-label="Add player" title="Add player">+</button>
+      </div>
+      <div id="rosterList" class="roster-list"></div>
+      <div class="hint">Press 1–9 while reviewing to quick-select a player. Team profiles save separately, so switch teams for your other son's games. Rosters and marks sync to the cloud — video files stay on this device only.</div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <span class="label">Clip queue</span>
+        <label class="iconbtn" for="clipInput" aria-label="Add clips" title="Add video files">↑</label>
+        <input id="clipInput" type="file" accept="video/*" multiple style="display:none">
+        <label class="iconbtn" for="hintsInput" aria-label="Load hints json" title="Load scene-detect hints.json">⌗</label>
+        <input id="hintsInput" type="file" accept=".json" multiple style="display:none">
+      </div>
+      <label class="hint" style="display:flex;align-items:center;gap:6px;cursor:pointer">
+        <input type="checkbox" id="hideShortToggle"> Hide clips under <span id="shortThresholdLabel">3</span>s (<span id="shortCount">0</span> found)
+      </label>
+      <div id="clipList" class="clip-list"></div>
+      <div class="hint">Drag proxy clips (and their hints.json files) anywhere on this page</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div id="clipTitle">No clip loaded — drop a proxy clip in, or use the ↑ icon above</div>
+    <video id="video" controls preload="metadata"></video>
+    <div class="scrubwrap">
+      <div id="scrubTrack" class="scrub-track">
+        <div id="scrubFill" class="scrub-fill"></div>
+        <div id="scrubTicks" class="scrub-ticks"></div>
+        <div id="scrubPlayhead" class="scrub-playhead"></div>
+      </div>
+      <div class="timecodes">
+        <span id="tcCurrent" class="mono">0:00.00</span>
+        <span id="tcDuration" class="mono">0:00.00</span>
+      </div>
+    </div>
+
+    <div class="controls-row">
+      <button class="btn" id="playBtn" title="Play / pause (space)">▶</button>
+      <button class="btn" id="stepBackBtn" title="Step back one frame (←)">‹</button>
+      <button class="btn" id="stepFwdBtn" title="Step forward one frame (→)">›</button>
+      <select id="speedSelect" class="select">
+        <option value="0.25">0.25x</option>
+        <option value="0.5">0.5x</option>
+        <option value="1" selected>1x</option>
+        <option value="1.5">1.5x</option>
+        <option value="2">2x</option>
+      </select>
+      <span class="spacer"></span>
+      <button class="btn accent" id="markInBtn">Set in <span class="mono">(I)</span></button>
+      <button class="btn accent" id="markOutBtn">Set out <span class="mono">(O)</span></button>
+    </div>
+
+    <div class="mark-builder">
+      <div class="pending-line">In: <span id="pendingIn" class="mono">—</span> &nbsp; Out: <span id="pendingOut" class="mono">—</span></div>
+      <div id="rosterChips" class="chip-row"></div>
+      <div class="pending-line">Zoom for this mark — where should the final crop favor?</div>
+      <div id="zoomChips" class="chip-row"></div>
+      <input id="noteInput" class="text-input" type="text" placeholder="Optional note (e.g. 'and-1', 'steal')">
+      <button class="btn solid" id="addMarkBtn">✓ Add mark</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <span class="label">Marks (<span id="markCount">0</span>)</span>
+      <span id="cloudStatus" class="hint" style="margin-left:6px"></span>
+      <span class="spacer"></span>
+      <button class="iconbtn" id="exportJsonBtn" title="Export all marks + team roster as JSON">⤓</button>
+      <button class="iconbtn" id="exportCsvBtn" title="Export all marks as CSV">csv</button>
+      <label class="iconbtn" for="importInput" title="Import a marks file to resume">⎗</label>
+      <input id="importInput" type="file" accept=".json" style="display:none">
+    </div>
+    <table class="marks-table">
+      <thead><tr><th>Clip</th><th>Start</th><th>End</th><th>Player</th><th>Zoom</th><th>Note</th><th></th></tr></thead>
+      <tbody id="marksBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+(function(){
+  const DEFAULT_HOME = '#1D3B6B', DEFAULT_AWAY = '#FFFFFF';
+  let teams = [];       // [{id, name, school, home, away, players:[{name,number}]}]
+  let activeTeamId = null;
+  let clips = [];
+  let activeClipId = null;
+  let pendingIn = null, pendingOut = null, selectedPlayer = null;
+  const ZOOM_PRESETS = ['Full', 'Zoom L', 'Zoom C', 'Zoom R', 'Tight'];
+  let selectedZoom = 'Full';
+
+  const $ = (id) => document.getElementById(id);
+  const video = $('video');
+
+  // --- cloud sync (db capability) ---------------------------------------
+  // Video files never leave the browser (dragged/picked locally, played via
+  // object URLs) -- there's no server to host tens of GB of raw game
+  // footage, and there doesn't need to be. What DOES sync across devices,
+  // through the artifact's shared db, is the part that's actually small:
+  // team rosters and the marks themselves, so a review started on a phone
+  // can be picked up on a laptop, and Rodney can hand off marks without an
+  // export/import step.
+  let db = null, dbReady = false;
+  function setCloudStatus(text){ const el = $('cloudStatus'); if(el) el.textContent = text; }
+  if(window.claude && window.claude.use){
+    claude.use('db').then(d => {
+      db = d; dbReady = !!d;
+      setCloudStatus(dbReady ? '☁ synced' : '');
+      if(dbReady) pullTeamsFromCloud();
+    }).catch(() => setCloudStatus(''));
+  }
+  function pullTeamsFromCloud(){
+    if(!db) return;
+    db.doc('meta/teams').get().then(snap => {
+      if(snap.exists && snap.data() && Array.isArray(snap.data().teams) && snap.data().teams.length){
+        teams = snap.data().teams;
+        activeTeamId = teams[0].id;
+        renderTeamSelect(); renderTeamFields(); renderRoster(); renderMarks();
+      }
+    }).catch(() => {});
+  }
+  function syncTeamsToCloud(){
+    if(!db) return;
+    db.doc('meta/teams').set({teams}).catch(() => {});
+  }
+  function syncMarkToCloud(clipName, mark){
+    if(!db) return;
+    db.doc('marks/' + mark.id).set({clip: clipName, start: mark.start, end: mark.end,
+      team: mark.team, player: mark.player, number: mark.number, zoom: mark.zoom || 'Full',
+      note: mark.note}).catch(() => {});
+  }
+  function deleteMarkFromCloud(id){
+    if(!db || !id) return;
+    db.doc('marks/' + id).delete().catch(() => {});
+  }
+
+  function uid(){ return 't' + Math.random().toString(36).slice(2, 9); }
+
+  function activeTeam(){ return teams.find(t => t.id === activeTeamId) || teams[0]; }
+
+  function loadState(){
+    try{
+      const raw = localStorage.getItem('bb_marker_teams');
+      if(raw) teams = JSON.parse(raw);
+    }catch(e){}
+    if(teams.length === 0){
+      // Migrate an old single-roster save if one exists, otherwise start fresh.
+      let legacyPlayers = [];
+      try{
+        const old = localStorage.getItem('bb_marker_roster');
+        if(old){
+          const parsed = JSON.parse(old);
+          legacyPlayers = parsed.map(p => ({name: p.name, number: p.number || ''}));
+        }
+      }catch(e){}
+      teams = [{id: uid(), name: 'My team', school: '', home: DEFAULT_HOME, away: DEFAULT_AWAY,
+        players: legacyPlayers.length ? legacyPlayers : [{name:'My son', number:''}]}];
+    }
+    activeTeamId = teams[0].id;
+  }
+  function saveTeams(){
+    try{ localStorage.setItem('bb_marker_teams', JSON.stringify(teams)); }catch(e){}
+    syncTeamsToCloud();
+  }
+
+  function renderTeamSelect(){
+    const sel = $('teamSelect');
+    sel.innerHTML = '';
+    teams.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.id; opt.textContent = t.name || 'Untitled team';
+      if(t.id === activeTeamId) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }
+
+  function renderTeamFields(){
+    const t = activeTeam();
+    if(!t) return;
+    $('teamNameInput').value = t.name || '';
+    $('teamSchoolInput').value = t.school || '';
+    $('homeColorInput').value = t.home || DEFAULT_HOME;
+    $('awayColorInput').value = t.away || DEFAULT_AWAY;
+  }
+
+  $('teamSelect').addEventListener('change', e => {
+    activeTeamId = e.target.value;
+    renderTeamFields(); renderRoster(); renderMarks();
+  });
+  $('addTeamBtn').addEventListener('click', () => {
+    const t = {id: uid(), name: `Team ${teams.length+1}`, school:'', home: DEFAULT_HOME, away: DEFAULT_AWAY, players:[{name:'Player 1', number:''}]};
+    teams.push(t); activeTeamId = t.id; saveTeams();
+    renderTeamSelect(); renderTeamFields(); renderRoster();
+  });
+  $('teamNameInput').addEventListener('change', e => { activeTeam().name = e.target.value; saveTeams(); renderTeamSelect(); });
+  $('teamSchoolInput').addEventListener('change', e => { activeTeam().school = e.target.value; saveTeams(); });
+  $('homeColorInput').addEventListener('change', e => { activeTeam().home = e.target.value; saveTeams(); renderRoster(); });
+  $('awayColorInput').addEventListener('change', e => { activeTeam().away = e.target.value; saveTeams(); renderRoster(); });
+
+  function renderRoster(){
+    const t = activeTeam();
+    const list = $('rosterList');
+    list.innerHTML = '';
+    (t.players||[]).forEach((p, i) => {
+      const row = document.createElement('div');
+      row.className = 'roster-row';
+      row.innerHTML = `<span class="numbadge" style="background:${t.home};color:#fff">${p.number||'—'}</span>
+        <input class="name-input" value="${p.name}" data-i="${i}" data-f="name">
+        <input class="num-input" value="${p.number||''}" placeholder="#" data-i="${i}" data-f="number">`;
+      list.appendChild(row);
+    });
+    list.querySelectorAll('input').forEach(inp => {
+      inp.addEventListener('change', e => {
+        const i = +e.target.dataset.i, f = e.target.dataset.f;
+        t.players[i][f] = e.target.value;
+        saveTeams(); renderRoster(); renderMarks();
+      });
+    });
+    renderChips();
+  }
+
+  function renderChips(){
+    const t = activeTeam();
+    const row = $('rosterChips');
+    row.innerHTML = '';
+    (t.players||[]).forEach(p => {
+      const chip = document.createElement('div');
+      chip.className = 'chip' + (selectedPlayer === p.name ? ' selected' : '');
+      chip.innerHTML = `<span class="swatch" style="background:${t.home}"></span>${p.name || 'unnamed'}${p.number ? ' #'+p.number : ''}`;
+      chip.addEventListener('click', () => { selectedPlayer = p.name; renderChips(); });
+      row.appendChild(chip);
+    });
+  }
+
+  function renderZoomChips(){
+    const row = $('zoomChips');
+    row.innerHTML = '';
+    ZOOM_PRESETS.forEach(z => {
+      const chip = document.createElement('div');
+      chip.className = 'chip' + (selectedZoom === z ? ' selected' : '');
+      chip.textContent = z;
+      chip.addEventListener('click', () => { selectedZoom = z; renderZoomChips(); });
+      row.appendChild(chip);
+    });
+  }
+
+  $('addPlayerBtn').addEventListener('click', () => {
+    const t = activeTeam();
+    t.players.push({name:`Player ${t.players.length+1}`, number:''});
+    saveTeams(); renderRoster();
+  });
+
+  function fmtTime(s){
+    if(!isFinite(s)) return '0:00.00';
+    const m = Math.floor(s/60), sec = (s%60).toFixed(2).padStart(5,'0');
+    return `${m}:${sec}`;
+  }
+
+  function activeClip(){ return clips.find(c => c.id === activeClipId); }
+
+  const SHORT_CLIP_THRESHOLD = 3.0; // seconds — below this, a clip is too brief to hold a marked play
+  let hideShortClips = false;
+
+  // Clips only get a real `duration` once selected and played (video.loadedmetadata).
+  // Probe every clip up front with a throwaway <video> so the "hide short clips"
+  // filter and the short badge work for the whole queue, not just the active clip.
+  function probeDuration(c){
+    if(!c.url || c.duration != null) return;
+    const probe = document.createElement('video');
+    probe.preload = 'metadata';
+    probe.src = c.url;
+    probe.addEventListener('loadedmetadata', () => {
+      c.duration = probe.duration;
+      renderClipList();
+    }, {once:true});
+    probe.addEventListener('error', () => {}, {once:true});
+  }
+
+  function renderClipList(){
+    const list = $('clipList');
+    list.innerHTML = '';
+    const shortCount = clips.filter(c => c.duration != null && c.duration < SHORT_CLIP_THRESHOLD).length;
+    $('shortCount').textContent = shortCount;
+    const visible = clips.filter(c => !(hideShortClips && c.duration != null && c.duration < SHORT_CLIP_THRESHOLD));
+    if(clips.length === 0){
+      list.innerHTML = '<div class="hint">No clips loaded yet</div>';
+      return;
+    }
+    if(visible.length === 0){
+      list.innerHTML = `<div class="hint">All ${clips.length} clip(s) are under ${SHORT_CLIP_THRESHOLD}s and hidden — uncheck "Hide clips under" above to see them.</div>`;
+      return;
+    }
+    visible.forEach(c => {
+      const isShort = c.duration != null && c.duration < SHORT_CLIP_THRESHOLD;
+      const row = document.createElement('div');
+      row.className = 'clip-row' + (c.id === activeClipId ? ' active' : '') + (isShort ? ' short-clip' : '');
+      row.innerHTML = `<span class="flag">${c.marks.length ? '✓' : '○'}</span>
+        <span style="flex:1">${c.name}${isShort ? `<span class="short-badge" title="Under ${SHORT_CLIP_THRESHOLD}s — likely too brief to hold a full play">${c.duration.toFixed(1)}s</span>` : ''}</span>
+        <span class="status">${c.marks.length} mark${c.marks.length===1?'':'s'}</span>
+        <button class="clip-remove" title="Remove from queue" aria-label="Remove clip">×</button>`;
+      row.addEventListener('click', (e) => { if(!e.target.closest('.clip-remove')) selectClip(c.id); });
+      row.querySelector('.clip-remove').addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeClip(c.id);
+      });
+      list.appendChild(row);
+    });
+  }
+
+  $('hideShortToggle').addEventListener('change', (e) => {
+    hideShortClips = e.target.checked;
+    renderClipList();
+  });
+
+  function removeClip(id){
+    const c = clips.find(c => c.id === id);
+    if(!c) return;
+    if(c.marks.length && !confirm(`${c.name} has ${c.marks.length} mark(s). Remove it from the queue anyway?`)) return;
+    if(c.url) URL.revokeObjectURL(c.url);
+    clips = clips.filter(c => c.id !== id);
+    if(activeClipId === id){
+      activeClipId = null;
+      video.removeAttribute('src'); video.load();
+      $('clipTitle').textContent = clips.length ? 'No clip selected' : 'No clip loaded — drop a proxy clip in, or use the ↑ icon above';
+      if(clips.length) selectClip(clips[0].id);
+    }
+    renderClipList(); renderMarks();
+  }
+
+  function selectClip(id){
+    activeClipId = id;
+    const c = activeClip();
+    if(!c) return;
+    if(c.url) video.src = c.url;
+    $('clipTitle').textContent = c.name + (c.fps ? ` — ${c.fps}fps` : '');
+    pendingIn = null; pendingOut = null;
+    $('pendingIn').textContent = '—'; $('pendingOut').textContent = '—';
+    renderClipList();
+    renderTicks();
+    renderMarks();
+  }
+
+  function renderTicks(){
+    const c = activeClip();
+    const wrap = $('scrubTicks');
+    wrap.innerHTML = '';
+    if(!c || !c.duration) return;
+    (c.segments||[]).forEach(seg => {
+      const tick = document.createElement('div');
+      tick.className = 'scrub-tick';
+      tick.style.left = (seg.start / c.duration * 100) + '%';
+      wrap.appendChild(tick);
+    });
+  }
+
+  function handleFiles(fileList){
+    let added = 0, skippedDupe = 0, skippedError = 0;
+    Array.from(fileList).forEach(file => {
+      const id = file.name + '_' + file.size;
+      if(clips.find(c => c.id === id)){ skippedDupe++; return; }
+      try{
+        const url = URL.createObjectURL(file);
+        const clip = {id, name: file.name.replace(/\.[^.]+$/, ''), file, url, fps:null, duration:null, segments:[], jerseyFlags:{}, marks:[]};
+        clips.push(clip);
+        probeDuration(clip);
+        added++;
+      }catch(e){
+        console.error('Could not load file', file.name, e);
+        skippedError++;
+      }
+    });
+    renderClipList();
+    if(!activeClipId && clips.length) selectClip(clips[0].id);
+    if(added === 0 && fileList.length > 0){
+      const why = skippedDupe > 0
+        ? `All ${skippedDupe} selected file(s) are already in the queue (same name + size).`
+        : `Could not load ${skippedError} file(s) — see browser console for details.`;
+      $('clipTitle').textContent = why;
+    }
+  }
+
+  function handleHints(fileList){
+    Array.from(fileList).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try{
+          const data = JSON.parse(reader.result);
+          const clip = clips.find(c => c.name === data.clip);
+          if(clip){
+            clip.fps = data.fps; clip.duration = clip.duration || data.duration;
+            clip.segments = data.segments || [];
+            clip.jerseyFlags = data.jersey_flags || {};
+            if(clip.id === activeClipId){ $('clipTitle').textContent = clip.name + ` — ${clip.fps}fps`; renderTicks(); }
+          }
+        }catch(e){ console.warn('bad hints file', file.name); }
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  $('clipInput').addEventListener('change', e => handleFiles(e.target.files));
+  $('hintsInput').addEventListener('change', e => handleHints(e.target.files));
+
+  document.addEventListener('dragover', e => e.preventDefault());
+  document.addEventListener('drop', e => {
+    e.preventDefault();
+    const vids = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('video/'));
+    const jsons = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.json'));
+    if(vids.length) handleFiles(vids);
+    if(jsons.length) handleHints(jsons);
+  });
+
+  video.addEventListener('loadedmetadata', () => {
+    const c = activeClip();
+    if(c){ c.duration = c.duration || video.duration; renderTicks(); }
+    $('tcDuration').textContent = fmtTime(video.duration);
+  });
+  video.addEventListener('timeupdate', () => {
+    $('tcCurrent').textContent = fmtTime(video.currentTime);
+    const pct = video.duration ? (video.currentTime/video.duration*100) : 0;
+    $('scrubFill').style.width = pct + '%';
+    $('scrubPlayhead').style.left = pct + '%';
+  });
+
+  $('scrubTrack').addEventListener('click', e => {
+    if(!video.duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pct = (e.clientX - rect.left) / rect.width;
+    video.currentTime = pct * video.duration;
+  });
+
+  $('playBtn').addEventListener('click', () => { video.paused ? video.play() : video.pause(); });
+  video.addEventListener('play', () => $('playBtn').textContent = '❚❚');
+  video.addEventListener('pause', () => $('playBtn').textContent = '▶');
+
+  function frameStep(dir){
+    const c = activeClip();
+    const fps = (c && c.fps) || 30;
+    video.currentTime = Math.max(0, video.currentTime + dir * (1/fps));
+  }
+  $('stepBackBtn').addEventListener('click', () => frameStep(-1));
+  $('stepFwdBtn').addEventListener('click', () => frameStep(1));
+  $('speedSelect').addEventListener('change', e => { video.playbackRate = parseFloat(e.target.value); });
+
+  $('markInBtn').addEventListener('click', () => { pendingIn = video.currentTime; $('pendingIn').textContent = fmtTime(pendingIn); });
+  $('markOutBtn').addEventListener('click', () => { pendingOut = video.currentTime; $('pendingOut').textContent = fmtTime(pendingOut); });
+
+  $('addMarkBtn').addEventListener('click', () => {
+    const c = activeClip();
+    if(!c) return;
+    if(pendingIn === null || pendingOut === null){ $('clipTitle').textContent = 'Set both an in and an out point first'; return; }
+    const start = Math.min(pendingIn, pendingOut), end = Math.max(pendingIn, pendingOut);
+    const t = activeTeam();
+    const p = (t.players||[]).find(pl => pl.name === selectedPlayer);
+    const mark = {id: uid(), start, end, team: t.name, player: selectedPlayer || '', number: (p && p.number) || '',
+      zoom: selectedZoom, note: $('noteInput').value.trim()};
+    c.marks.push(mark);
+    syncMarkToCloud(c.name, mark);
+    pendingIn = null; pendingOut = null;
+    $('pendingIn').textContent = '—'; $('pendingOut').textContent = '—';
+    $('noteInput').value = '';
+    renderClipList(); renderMarks();
+  });
+
+  function renderMarks(){
+    const body = $('marksBody');
+    body.innerHTML = '';
+    let total = 0;
+    clips.forEach(c => {
+      c.marks.forEach((m, i) => {
+        total++;
+        const tr = document.createElement('tr');
+        const who = m.player ? `${m.player}${m.number ? ' #'+m.number : ''}` : '—';
+        tr.innerHTML = `<td>${c.name}</td><td class="num">${fmtTime(m.start)}</td><td class="num">${fmtTime(m.end)}</td><td>${who}</td><td>${m.zoom||'Full'}</td><td>${m.note||''}</td>
+          <td><button class="del-btn" data-clip="${c.id}" data-i="${i}" aria-label="Delete mark">×</button></td>`;
+        body.appendChild(tr);
+      });
+    });
+    $('markCount').textContent = total;
+    body.querySelectorAll('.del-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        const clipId = e.currentTarget.dataset.clip, i = +e.currentTarget.dataset.i;
+        const c = clips.find(c => c.id === clipId);
+        const removed = c.marks[i];
+        c.marks.splice(i, 1);
+        if(removed) deleteMarkFromCloud(removed.id);
+        renderClipList(); renderMarks();
+      });
+    });
+  }
+
+  function allMarks(){
+    const out = [];
+    clips.forEach(c => c.marks.forEach(m => out.push({clip: c.name, start: m.start, end: m.end, team: m.team||'', player: m.player, number: m.number||'', zoom: m.zoom||'Full', note: m.note})));
+    return out;
+  }
+
+  let downloadsCap = null;
+  if(window.claude && window.claude.use){
+    window.claude.use('downloads').then(d => downloadsCap = d).catch(() => {});
+  }
+
+  async function saveFile(filename, text, mime){
+    if(downloadsCap){
+      try{ await downloadsCap.save({filename, data: new Blob([text], {type: mime})}); return; }catch(e){}
+    }
+    // Fallback for a preview context with no downloads capability yet
+    const blob = new Blob([text], {type: mime});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+
+  $('exportJsonBtn').addEventListener('click', () => {
+    saveFile('highlight_marks.json', JSON.stringify({teams, marks: allMarks()}, null, 2), 'application/json');
+  });
+  $('exportCsvBtn').addEventListener('click', () => {
+    const rows = [['clip','start','end','team','player','number','note'], ...allMarks().map(m => [m.clip, m.start, m.end, m.team, m.player, m.number, m.note])];
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+    saveFile('highlight_marks.csv', csv, 'text/csv');
+  });
+  $('importInput').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try{
+        const data = JSON.parse(reader.result);
+        if(data.teams && data.teams.length){ teams = data.teams; activeTeamId = teams[0].id; saveTeams(); renderTeamSelect(); renderTeamFields(); renderRoster(); }
+        (data.marks||[]).forEach(m => {
+          let c = clips.find(c => c.name === m.clip);
+          if(!c){ c = {id: m.clip, name: m.clip, file:null, url:null, fps:null, duration:null, segments:[], jerseyFlags:{}, marks:[]}; clips.push(c); }
+          const mark = {id: m.id || uid(), start:m.start, end:m.end, team:m.team, player:m.player, number:m.number, zoom:m.zoom||'Full', note:m.note};
+          c.marks.push(mark);
+          syncMarkToCloud(c.name, mark);
+        });
+        renderClipList(); renderMarks();
+      }catch(err){ $('clipTitle').textContent = 'Could not read that marks file'; }
+    };
+    reader.readAsText(file);
+  });
+
+  document.addEventListener('keydown', e => {
+    if(e.target.tagName === 'INPUT') return;
+    if(e.code === 'Space'){ e.preventDefault(); video.paused ? video.play() : video.pause(); }
+    if(e.key === 'i' || e.key === 'I') $('markInBtn').click();
+    if(e.key === 'o' || e.key === 'O') $('markOutBtn').click();
+    if(e.key === 'ArrowLeft') frameStep(-1);
+    if(e.key === 'ArrowRight') frameStep(1);
+    if(/^[1-9]$/.test(e.key)){
+      const idx = +e.key - 1;
+      const t = activeTeam();
+      if(t.players[idx]){ selectedPlayer = t.players[idx].name; renderChips(); }
+    }
+  });
+
+  loadState();
+  renderTeamSelect();
+  renderTeamFields();
+  renderRoster();
+  renderZoomChips();
+  renderClipList();
+})();
+</script>
