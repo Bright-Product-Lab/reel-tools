@@ -60,16 +60,13 @@ h1,h2,.display{font-family:'Oswald',system-ui,sans-serif;font-weight:600;text-tr
 .color-field input[type=color]{width:26px;height:26px;border:0.5px solid var(--border);border-radius:6px;padding:0;background:none;cursor:pointer}
 .team-name-input{font-family:'Oswald',sans-serif;font-weight:600;font-size:15px;text-transform:uppercase;letter-spacing:0.02em;border:none;background:none;color:var(--text);width:100%;margin-bottom:2px}
 .school-input{border:none;background:none;color:var(--text-secondary);font-size:12px;width:100%;margin-bottom:10px}
-.kind-toggle{display:flex;gap:6px;margin-bottom:8px}
-.kind-btn{flex:1;background:var(--surface-2);border:0.5px solid var(--border);border-radius:7px;padding:6px 8px;color:var(--text-secondary);font-size:12px;cursor:pointer;font-family:inherit;text-align:center}
-.kind-btn.active{background:var(--fuchsia-bg);border-color:var(--fuchsia);color:var(--fuchsia-text)}
 .clip-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:pointer;color:var(--text-secondary);font-size:13px}
 .clip-row:hover{background:var(--surface-2)}
 .clip-row.active{background:var(--lime-bg);color:var(--lime-text)}
 .clip-row .status{margin-left:auto;font-size:11px;font-family:'IBM Plex Mono',monospace}
 .clip-row .flag{width:16px;text-align:center}
-.kind-pill{font-size:9px;text-transform:uppercase;letter-spacing:0.04em;border-radius:4px;padding:1px 5px;flex-shrink:0;border:0.5px solid var(--border-strong);color:var(--text-muted);background:var(--surface-2)}
-.kind-pill.broll{color:var(--fuchsia-text);border-color:var(--fuchsia);background:var(--fuchsia-bg)}
+.cat-pill{font-size:9px;text-transform:uppercase;letter-spacing:0.04em;border-radius:4px;padding:1px 5px;flex-shrink:0;border:0.5px solid var(--border-strong);color:var(--text-muted);background:var(--surface-2)}
+.cat-pill.broll{color:var(--fuchsia-text);border-color:var(--fuchsia);background:var(--fuchsia-bg)}
 .clip-remove{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:2px 4px;flex-shrink:0}
 .clip-remove:hover{color:var(--danger)}
 .clip-row.short-clip{opacity:0.55}
@@ -184,15 +181,11 @@ body.stage-locked{overflow:hidden}
         <label class="iconbtn" for="hintsInput" aria-label="Load hints json" title="Load scene-detect hints.json">⌗</label>
         <input id="hintsInput" type="file" accept=".json" multiple style="display:none">
       </div>
-      <div class="kind-toggle" role="group" aria-label="Tag new clips as">
-        <button class="kind-btn active" id="kindGameBtn" type="button">🏀 Game clips</button>
-        <button class="kind-btn" id="kindBrollBtn" type="button">🎬 B-roll</button>
-      </div>
       <label class="hint" style="display:flex;align-items:center;gap:6px;cursor:pointer">
         <input type="checkbox" id="hideShortToggle"> Hide clips under <span id="shortThresholdLabel">3</span>s (<span id="shortCount">0</span> found)
       </label>
       <div id="clipList" class="clip-list"></div>
-      <div class="hint">Drag proxy clips (and their hints.json files) anywhere on this page. New clips get tagged with whichever toggle above is active — click a clip's tag pill to flip it after the fact.</div>
+      <div class="hint">Drag proxy clips (and their hints.json files) anywhere on this page. Team-action vs. B-roll is tagged per mark, not per clip — a single clip can hold both.</div>
     </div>
   </div>
 
@@ -219,11 +212,18 @@ body.stage-locked{overflow:hidden}
           <div class="chip-row rosterChipsTarget" id="rosterChipsFs"></div>
         </div>
         <div class="fs-row">
+          <div class="chip-row categoryChipsTarget" id="categoryChipsFs"></div>
+        </div>
+        <div class="fs-row">
           <div class="chip-row zoomChipsTarget" id="zoomChipsFs"></div>
         </div>
         <div class="fs-row">
-          <input id="noteInputFs" class="text-input noteInputTarget" type="text" placeholder="Optional note">
+          <input id="noteInputFs" class="text-input noteInputTarget" type="text" placeholder="Note — press Enter to attach">
+          <button class="btn" id="fsAddNoteBtn" title="Attach this note (Enter)">➕</button>
           <button class="btn solid" id="fsAddMarkBtn">✓ Add mark</button>
+        </div>
+        <div class="fs-row">
+          <div class="chip-row pendingNotesTarget" id="pendingNotesChipsFs"></div>
         </div>
       </div>
     </div>
@@ -262,14 +262,21 @@ body.stage-locked{overflow:hidden}
 
     <div class="mark-builder">
       <div class="pending-line">In: <span id="pendingIn" class="mono">—</span> &nbsp; Out: <span id="pendingOut" class="mono">—</span></div>
-      <div class="instruction">① Pick the player → ② pick a zoom → ③ add a note (optional) → ④ Add mark</div>
+      <div class="instruction">① Pick player(s) → ② pick a category → ③ pick a zoom → ④ attach note(s) → ⑤ Add mark</div>
+      <div class="pending-line">Player(s) in this highlight — click to toggle, more than one is fine</div>
       <div id="rosterChips" class="chip-row rosterChipsTarget"></div>
+      <div class="pending-line">Category</div>
+      <div id="categoryChips" class="chip-row categoryChipsTarget"></div>
       <div class="pending-line">Zoom for this mark — where should the final crop favor?</div>
       <div id="zoomChips" class="chip-row zoomChipsTarget"></div>
       <div class="note-row">
-        <input id="noteInput" class="text-input noteInputTarget" type="text" placeholder="Optional note (e.g. 'and-1', 'steal')">
-        <button class="iconbtn" id="saveNoteBtn" title="Save this note for quick reuse">💾</button>
+        <input id="noteInput" class="text-input noteInputTarget" type="text" placeholder="Note — player action or an editing instruction, e.g. 'slow-mo' or 'cut to crowd'">
+        <button class="iconbtn" id="addNoteBtn" title="Attach this note to the mark (Enter)">➕</button>
+        <button class="iconbtn" id="saveNoteBtn" title="Save this note as a quick-reuse shortcut">💾</button>
       </div>
+      <div class="pending-line">Notes attached to this mark — order is kept, and can be read by post-editing automation for effects or clip order</div>
+      <div id="pendingNotesChips" class="chip-row pendingNotesTarget"></div>
+      <div class="pending-line">Saved note shortcuts</div>
       <div id="savedNoteChips" class="chip-row"></div>
       <button class="btn solid" id="addMarkBtn">✓ Add mark</button>
     </div>
@@ -288,13 +295,14 @@ body.stage-locked{overflow:hidden}
     <div class="marks-toolbar">
       <input id="filterText" class="text-input" type="text" placeholder="Filter by player, note, or clip…">
       <select id="filterClip" class="select"><option value="">All clips</option></select>
+      <select id="filterCategory" class="select"><option value="">All categories</option></select>
       <select id="filterPlayer" class="select"><option value="">All players</option></select>
       <select id="filterZoom" class="select"><option value="">All zooms</option></select>
     </div>
     <table class="marks-table">
       <thead><tr>
-        <th data-col="clip">Clip</th><th data-col="start">Start</th><th data-col="end">End</th>
-        <th data-col="player">Player</th><th data-col="zoom">Zoom</th><th data-col="note">Note</th><th></th>
+        <th data-col="clip">Clip</th><th data-col="category">Category</th><th data-col="start">Start</th><th data-col="end">End</th>
+        <th data-col="player">Players</th><th data-col="zoom">Zoom</th><th data-col="note">Notes</th><th></th>
       </tr></thead>
       <tbody id="marksBody"></tbody>
     </table>
@@ -309,11 +317,14 @@ body.stage-locked{overflow:hidden}
   let activeTeamId = null;
   let clips = [];
   let activeClipId = null;
-  let pendingIn = null, pendingOut = null, selectedPlayer = null;
+  let pendingIn = null, pendingOut = null;
+  let selectedPlayers = new Set(); // mark-level multi-select: more than one player can share a highlight
   const ZOOM_PRESETS = ['Full', 'Zoom L', 'Zoom C', 'Zoom R', 'Tight'];
   let selectedZoom = 'Full';
-  let nextClipKind = 'game'; // 'game' | 'broll' — applied to newly-added clips
-  let savedNotes = [];
+  const CATEGORY_PRESETS = ['Team', 'B-roll']; // mark-level, not clip-level — one clip can hold both
+  let selectedCategory = 'Team';
+  let pendingNotes = []; // notes attached to the mark currently being built; a mark can carry several
+  let savedNotes = []; // reusable note-text shortcuts, separate from a mark's actual attached notes
 
   const $ = (id) => document.getElementById(id);
   const video = $('video');
@@ -365,8 +376,8 @@ body.stage-locked{overflow:hidden}
   function syncMarkToCloud(clipName, mark){
     if(!db) return;
     db.doc('marks/' + mark.id).set({clip: clipName, start: mark.start, end: mark.end,
-      team: mark.team, player: mark.player, number: mark.number, zoom: mark.zoom || 'Full',
-      note: mark.note}).catch(() => {});
+      team: mark.team, category: mark.category || 'Team', players: mark.players || [],
+      zoom: mark.zoom || 'Full', notes: mark.notes || []}).catch(() => {});
   }
   function deleteMarkFromCloud(id){
     if(!db || !id) return;
@@ -456,9 +467,6 @@ body.stage-locked{overflow:hidden}
     try{ localStorage.setItem('bb_marker_team_collapsed', collapsed ? '1' : '0'); }catch(e){}
   });
 
-  $('kindGameBtn').addEventListener('click', () => { nextClipKind = 'game'; $('kindGameBtn').classList.add('active'); $('kindBrollBtn').classList.remove('active'); });
-  $('kindBrollBtn').addEventListener('click', () => { nextClipKind = 'broll'; $('kindBrollBtn').classList.add('active'); $('kindGameBtn').classList.remove('active'); });
-
   function renderRoster(){
     const t = activeTeam();
     const list = $('rosterList');
@@ -487,9 +495,13 @@ body.stage-locked{overflow:hidden}
       row.innerHTML = '';
       (t.players||[]).forEach(p => {
         const chip = document.createElement('div');
-        chip.className = 'chip' + (selectedPlayer === p.name ? ' selected' : '');
+        chip.className = 'chip' + (selectedPlayers.has(p.name) ? ' selected' : '');
         chip.innerHTML = `<span class="swatch" style="background:${t.home}"></span>${p.name || 'unnamed'}${p.number ? ' #'+p.number : ''}`;
-        chip.addEventListener('click', () => { selectedPlayer = p.name; renderChips(); });
+        chip.addEventListener('click', () => {
+          if(selectedPlayers.has(p.name)) selectedPlayers.delete(p.name);
+          else selectedPlayers.add(p.name);
+          renderChips();
+        });
         row.appendChild(chip);
       });
     });
@@ -506,6 +518,41 @@ body.stage-locked{overflow:hidden}
         row.appendChild(chip);
       });
     });
+  }
+
+  function renderCategoryChips(){
+    document.querySelectorAll('.categoryChipsTarget').forEach(row => {
+      row.innerHTML = '';
+      CATEGORY_PRESETS.forEach(cat => {
+        const chip = document.createElement('div');
+        chip.className = 'chip' + (selectedCategory === cat ? ' selected' : '');
+        chip.textContent = cat;
+        chip.addEventListener('click', () => { selectedCategory = cat; renderCategoryChips(); });
+        row.appendChild(chip);
+      });
+    });
+  }
+
+  function renderPendingNotes(){
+    document.querySelectorAll('.pendingNotesTarget').forEach(row => {
+      row.innerHTML = '';
+      if(!pendingNotes.length){ row.innerHTML = '<span class="hint" style="margin:0">No notes attached yet</span>'; return; }
+      pendingNotes.forEach((n, i) => {
+        const chip = document.createElement('div');
+        chip.className = 'chip note-chip';
+        chip.innerHTML = `${n} <span style="color:var(--text-muted);margin-left:4px" title="Remove">×</span>`;
+        chip.addEventListener('click', () => { pendingNotes.splice(i, 1); renderPendingNotes(); });
+        row.appendChild(chip);
+      });
+    });
+  }
+
+  function addPendingNote(){
+    const val = ($('noteInput').value || '').trim();
+    if(!val) return;
+    pendingNotes.push(val);
+    setNoteInputs('');
+    renderPendingNotes();
   }
 
   function renderSavedNoteChips(){
@@ -532,7 +579,10 @@ body.stage-locked{overflow:hidden}
   }
   document.querySelectorAll('.noteInputTarget').forEach(inp => {
     inp.addEventListener('input', e => setNoteInputs(e.target.value));
+    inp.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); addPendingNote(); } });
   });
+  $('addNoteBtn').addEventListener('click', addPendingNote);
+  $('fsAddNoteBtn').addEventListener('click', addPendingNote);
   $('saveNoteBtn').addEventListener('click', () => {
     const v = $('noteInput').value.trim();
     if(!v) return;
@@ -603,13 +653,11 @@ body.stage-locked{overflow:hidden}
       const row = document.createElement('div');
       row.className = 'clip-row' + (c.id === activeClipId ? ' active' : '') + (isShort ? ' short-clip' : '');
       row.innerHTML = `<span class="flag">${c.marks.length ? '✓' : '○'}</span>
-        <span class="kind-pill${c.kind==='broll' ? ' broll' : ''}" title="Click to flip Game/B-roll">${c.kind==='broll' ? 'B-ROLL' : 'GAME'}</span>
         <span style="flex:1">${c.name}${isShort ? `<span class="short-badge" title="Under ${SHORT_CLIP_THRESHOLD}s — likely too brief to hold a full play">${c.duration.toFixed(1)}s</span>` : ''}</span>
         <span class="status">${c.marks.length} mark${c.marks.length===1?'':'s'}</span>
         <button class="clip-remove" title="Remove from queue" aria-label="Remove clip">×</button>`;
       row.addEventListener('click', (e) => {
         if(e.target.closest('.clip-remove')) return;
-        if(e.target.closest('.kind-pill')){ c.kind = c.kind === 'broll' ? 'game' : 'broll'; renderClipList(); return; }
         selectClip(c.id);
       });
       row.querySelector('.clip-remove').addEventListener('click', (e) => {
@@ -681,7 +729,7 @@ body.stage-locked{overflow:hidden}
       try{
         const url = URL.createObjectURL(file);
         const clip = {id, name: file.name.replace(/\.[^.]+$/, ''), file, url, fps:null, duration:null,
-          segments:[], jerseyFlags:{}, marks:[], kind: nextClipKind, capturedAt: file.lastModified || null};
+          segments:[], jerseyFlags:{}, marks:[], capturedAt: file.lastModified || null};
         clips.push(clip);
         probeDuration(clip);
         added++;
@@ -805,17 +853,28 @@ body.stage-locked{overflow:hidden}
     const c = activeClip();
     if(!c) return;
     if(pendingIn === null || pendingOut === null){ $('clipTitle').textContent = 'Set both an in and an out point first'; return; }
+    // Flush any text still sitting in the note input, unsubmitted, so it
+    // isn't silently dropped if the player clicks Add mark instead of
+    // pressing Enter / the + button first.
+    const leftover = ($('noteInput').value || '').trim();
+    if(leftover) pendingNotes.push(leftover);
     const start = Math.min(pendingIn, pendingOut), end = Math.max(pendingIn, pendingOut);
     const t = activeTeam();
-    const p = (t.players||[]).find(pl => pl.name === selectedPlayer);
-    const noteVal = $('noteInput').value.trim();
-    const mark = {id: uid(), start, end, team: t.name, player: selectedPlayer || '', number: (p && p.number) || '',
-      zoom: selectedZoom, note: noteVal};
+    const players = Array.from(selectedPlayers).map(name => {
+      const p = (t.players||[]).find(pl => pl.name === name);
+      return {name, number: (p && p.number) || ''};
+    });
+    const mark = {id: uid(), start, end, team: t.name, category: selectedCategory,
+      players, zoom: selectedZoom, notes: pendingNotes.slice()};
     c.marks.push(mark);
     syncMarkToCloud(c.name, mark);
     pendingIn = null; pendingOut = null;
+    selectedPlayers = new Set();
+    pendingNotes = [];
     updatePendingLabels();
     setNoteInputs('');
+    renderChips();
+    renderPendingNotes();
     renderClipList(); renderMarks();
   }
   $('addMarkBtn').addEventListener('click', doAddMark);
@@ -849,8 +908,10 @@ body.stage-locked{overflow:hidden}
     $('marksEmptyHint').textContent = (total > 0 && rows.length === 0) ? 'No marks match the current filter.' : '';
     rows.forEach(r => {
       const tr = document.createElement('tr');
-      const who = r.player ? `${r.player}${r.number ? ' #'+r.number : ''}` : '—';
-      tr.innerHTML = `<td>${r.clipName}</td><td class="num">${fmtTime(r.start)}</td><td class="num">${fmtTime(r.end)}</td><td>${who}</td><td>${r.zoom||'Full'}</td><td>${r.note||''}</td>
+      const who = (r.players && r.players.length) ? r.players.map(p => p.name + (p.number ? ' #'+p.number : '')).join(', ') : '—';
+      const notesStr = (r.notes && r.notes.length) ? r.notes.join(' · ') : '';
+      const cat = r.category || 'Team';
+      tr.innerHTML = `<td>${r.clipName}</td><td><span class="cat-pill${cat==='B-roll' ? ' broll' : ''}">${cat}</span></td><td class="num">${fmtTime(r.start)}</td><td class="num">${fmtTime(r.end)}</td><td>${who}</td><td>${r.zoom||'Full'}</td><td>${notesStr}</td>
         <td><button class="del-btn" data-clip="${r.clipId}" data-i="${r.idx}" aria-label="Delete mark">×</button></td>`;
       body.appendChild(tr);
     });
@@ -869,7 +930,7 @@ body.stage-locked{overflow:hidden}
 
   // --- Marks table: sort + filter -------------------------------------
   let marksSort = {col:'clip', dir:1};
-  let marksFilter = {text:'', clipf:'', player:'', zoom:''};
+  let marksFilter = {text:'', clipf:'', player:'', zoom:'', categoryf:''};
 
   function flatMarks(){
     const out = [];
@@ -880,20 +941,26 @@ body.stage-locked{overflow:hidden}
     let rows = flatMarks();
     const f = marksFilter;
     if(f.clipf) rows = rows.filter(r => r.clipId === f.clipf);
-    if(f.player) rows = rows.filter(r => r.player === f.player);
+    if(f.categoryf) rows = rows.filter(r => (r.category||'Team') === f.categoryf);
+    if(f.player) rows = rows.filter(r => (r.players||[]).some(p => p.name === f.player));
     if(f.zoom) rows = rows.filter(r => (r.zoom||'Full') === f.zoom);
     if(f.text){
       const q = f.text.toLowerCase();
-      rows = rows.filter(r => (r.note||'').toLowerCase().includes(q) || (r.player||'').toLowerCase().includes(q) || r.clipName.toLowerCase().includes(q));
+      rows = rows.filter(r => {
+        const notesStr = (r.notes||[]).join(' ').toLowerCase();
+        const playersStr = (r.players||[]).map(p => p.name).join(' ').toLowerCase();
+        return notesStr.includes(q) || playersStr.includes(q) || r.clipName.toLowerCase().includes(q);
+      });
     }
     const col = marksSort.col, dir = marksSort.dir;
     rows.sort((a,b) => {
       let av, bv;
       if(col === 'start'){ av=a.start; bv=b.start; }
       else if(col === 'end'){ av=a.end; bv=b.end; }
-      else if(col === 'player'){ av=(a.player||'').toLowerCase(); bv=(b.player||'').toLowerCase(); }
+      else if(col === 'player'){ av=(a.players||[]).map(p=>p.name).join(', ').toLowerCase(); bv=(b.players||[]).map(p=>p.name).join(', ').toLowerCase(); }
+      else if(col === 'category'){ av=(a.category||'Team'); bv=(b.category||'Team'); }
       else if(col === 'zoom'){ av=(a.zoom||''); bv=(b.zoom||''); }
-      else if(col === 'note'){ av=(a.note||'').toLowerCase(); bv=(b.note||'').toLowerCase(); }
+      else if(col === 'note'){ av=(a.notes||[]).join(' ').toLowerCase(); bv=(b.notes||[]).join(' ').toLowerCase(); }
       else { av=a.clipName.toLowerCase(); bv=b.clipName.toLowerCase(); }
       if(av < bv) return -1*dir;
       if(av > bv) return 1*dir;
@@ -921,23 +988,32 @@ body.stage-locked{overflow:hidden}
     });
   });
   function refreshMarkFilterOptions(){
-    const clipSel = $('filterClip'), playerSel = $('filterPlayer'), zoomSel = $('filterZoom');
-    const curClip = clipSel.value, curPlayer = playerSel.value, curZoom = zoomSel.value;
+    const clipSel = $('filterClip'), playerSel = $('filterPlayer'), zoomSel = $('filterZoom'), catSel = $('filterCategory');
+    const curClip = clipSel.value, curPlayer = playerSel.value, curZoom = zoomSel.value, curCat = catSel.value;
     clipSel.innerHTML = '<option value="">All clips</option>' + clips.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
     const players = new Set();
-    clips.forEach(c => c.marks.forEach(m => { if(m.player) players.add(m.player); }));
+    clips.forEach(c => c.marks.forEach(m => (m.players||[]).forEach(p => { if(p.name) players.add(p.name); })));
     playerSel.innerHTML = '<option value="">All players</option>' + Array.from(players).sort().map(p => `<option value="${p}">${p}</option>`).join('');
     zoomSel.innerHTML = '<option value="">All zooms</option>' + ZOOM_PRESETS.map(z => `<option value="${z}">${z}</option>`).join('');
-    clipSel.value = curClip; playerSel.value = curPlayer; zoomSel.value = curZoom;
+    catSel.innerHTML = '<option value="">All categories</option>' + CATEGORY_PRESETS.map(c => `<option value="${c}">${c}</option>`).join('');
+    clipSel.value = curClip; playerSel.value = curPlayer; zoomSel.value = curZoom; catSel.value = curCat;
   }
   $('filterText').addEventListener('input', e => { marksFilter.text = e.target.value; renderMarks(); });
   $('filterClip').addEventListener('change', e => { marksFilter.clipf = e.target.value; renderMarks(); });
   $('filterPlayer').addEventListener('change', e => { marksFilter.player = e.target.value; renderMarks(); });
   $('filterZoom').addEventListener('change', e => { marksFilter.zoom = e.target.value; renderMarks(); });
+  $('filterCategory').addEventListener('change', e => { marksFilter.categoryf = e.target.value; renderMarks(); });
 
   function allMarks(){
     const out = [];
-    clips.forEach(c => c.marks.forEach(m => out.push({clip: c.name, start: m.start, end: m.end, team: m.team||'', player: m.player, number: m.number||'', zoom: m.zoom||'Full', note: m.note})));
+    // Shape kept intentionally structured (players/notes as arrays, in
+    // order) rather than squashed to strings -- this JSON export is meant
+    // to be readable by downstream post-editing automation (effects,
+    // clip-order instructions), not just by a person.
+    clips.forEach(c => c.marks.forEach(m => out.push({
+      clip: c.name, category: m.category || 'Team', start: m.start, end: m.end, team: m.team||'',
+      players: m.players || [], zoom: m.zoom || 'Full', notes: m.notes || []
+    })));
     return out;
   }
 
@@ -960,7 +1036,12 @@ body.stage-locked{overflow:hidden}
     saveFile('highlight_marks.json', JSON.stringify({teams, marks: allMarks()}, null, 2), 'application/json');
   });
   $('exportCsvBtn').addEventListener('click', () => {
-    const rows = [['clip','start','end','team','player','number','zoom','note'], ...allMarks().map(m => [m.clip, m.start, m.end, m.team, m.player, m.number, m.zoom, m.note])];
+    const rows = [['clip','category','start','end','team','players','zoom','notes'], ...allMarks().map(m => [
+      m.clip, m.category, m.start, m.end, m.team,
+      (m.players||[]).map(p => p.name + (p.number ? ' #'+p.number : '')).join('; '),
+      m.zoom,
+      (m.notes||[]).join('; ')
+    ])];
     const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
     saveFile('highlight_marks.csv', csv, 'text/csv');
   });
@@ -974,8 +1055,12 @@ body.stage-locked{overflow:hidden}
         if(data.teams && data.teams.length){ teams = data.teams; activeTeamId = teams[0].id; saveTeams(); renderTeamSelect(); renderTeamFields(); renderRoster(); }
         (data.marks||[]).forEach(m => {
           let c = clips.find(c => c.name === m.clip);
-          if(!c){ c = {id: m.clip, name: m.clip, file:null, url:null, fps:null, duration:null, segments:[], jerseyFlags:{}, marks:[], kind:'game', capturedAt:null}; clips.push(c); }
-          const mark = {id: m.id || uid(), start:m.start, end:m.end, team:m.team, player:m.player, number:m.number, zoom:m.zoom||'Full', note:m.note};
+          if(!c){ c = {id: m.clip, name: m.clip, file:null, url:null, fps:null, duration:null, segments:[], jerseyFlags:{}, marks:[], capturedAt:null}; clips.push(c); }
+          // Accept both the current shape and the older single-player/single-note
+          // shape from a file exported before this rebuild.
+          const players = m.players || (m.player ? [{name: m.player, number: m.number || ''}] : []);
+          const notes = m.notes || (m.note ? [m.note] : []);
+          const mark = {id: m.id || uid(), start:m.start, end:m.end, team:m.team, category:m.category||'Team', players, zoom:m.zoom||'Full', notes};
           c.marks.push(mark);
           syncMarkToCloud(c.name, mark);
         });
@@ -998,7 +1083,12 @@ body.stage-locked{overflow:hidden}
     if(/^[1-9]$/.test(e.key)){
       const idx = +e.key - 1;
       const t = activeTeam();
-      if(t.players[idx]){ selectedPlayer = t.players[idx].name; renderChips(); }
+      if(t.players[idx]){
+        const name = t.players[idx].name;
+        if(selectedPlayers.has(name)) selectedPlayers.delete(name);
+        else selectedPlayers.add(name);
+        renderChips();
+      }
     }
   });
 
@@ -1015,6 +1105,8 @@ body.stage-locked{overflow:hidden}
   renderTeamFields();
   renderRoster();
   renderZoomChips();
+  renderCategoryChips();
+  renderPendingNotes();
   renderSavedNoteChips();
   renderClipList();
   updatePendingLabels();
