@@ -7,7 +7,7 @@
 (function(){
   const $ = id => document.getElementById(id);
   const esc = RBS.esc, fmt = RBS.fmt;
-  const FORMATS = {'9:16': {w: 1080, h: 1920, prev: [360, 640]}, '1:1': {w: 1080, h: 1080, prev: [480, 480]}, '16:9': {w: 1920, h: 1080, prev: [640, 360]}};
+  const FORMATS = {'9:16': {w: 1080, h: 1920, prev: [360, 640]}, '1:1': {w: 1080, h: 1080, prev: [480, 480]}, '4:3': {w: 1440, h: 1080, prev: [560, 420]}, '16:9': {w: 1920, h: 1080, prev: [640, 360]}};
   let fmtKey = '9:16';
   const OUT = () => FORMATS[fmtKey];
   const outAR = () => OUT().w / OUT().h;
@@ -45,10 +45,11 @@
 
   /* ------------------------------ geometry ------------------------------ */
   // Crop box in source pixels for a {cx, cy, z} state. z=1 is the tallest 9:16 box that fits.
-  function cropRect(s, st){
+  function cropRect(s, st, ar){
+    const AR = ar || outAR();
     const vw = s.vw || 1920, vh = s.vh || 1080;
-    const h0 = Math.min(vh, vw / outAR());
-    const h = h0 / Math.max(1, st.z), w = h * outAR();
+    const h0 = Math.min(vh, vw / AR);
+    const h = h0 / Math.max(1, st.z), w = h * AR;
     const cx = Math.min(vw - w / 2, Math.max(w / 2, st.cx * vw));
     const cy = Math.min(vh - h / 2, Math.max(h / 2, st.cy * vh));
     return {x: cx - w / 2, y: cy - h / 2, w, h};
@@ -649,7 +650,7 @@
     }
   });
 
-  RBS.vertical = {segs: () => segs, buildScript, buildJson, evalCrop, cropRect};
+  RBS.vertical = {segs: () => segs, buildScript, buildJson, evalCrop, cropRect, format: () => Object.assign({key: fmtKey}, OUT()), formats: FORMATS, presets: PRESETS};
   renderPanels(); renderSegs(); refreshPlayerFilter();
   requestAnimationFrame(loop);
 })();

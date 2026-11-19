@@ -105,6 +105,26 @@ You can filter by player. The **sharpness readout** turns orange at 1.9× upscal
    The script renders each clip at 1080×1920 H.264 with BT.709 color tags, using the same keyframes, easing and animated zoom, then joins the clips into `vertical_reel.mp4`. It needs ffmpeg 5 or later (`brew install ffmpeg`).
    **Keyframes JSON** carries the same data for your own pipeline: per-keyframe center, zoom and crop rectangle in source pixels.
 
+## Send to DaVinci Resolve (companion editor)
+Reel Bin does the fast part. Resolve does the timeline, color, transitions, titles and export.
+
+1. **One time:** download the Mac helper from the Send to Resolve dialog (`downloads/reel-bin-resolve-bridge.zip`). Double-click **Install Reel Bin Bridge.command**, then turn on **Accessibility** for Reel Bin Bridge in System Settings.
+2. **Each job:** click **Marks → Send to Resolve ›**, check the source folder, and pick:
+   - **Formats:** Wide 16:9, Vertical 9:16, Standard 4:3, Square 1:1
+   - **Resolution:** HD or 4K
+   - **Codec:** H.264, H.265 or ProRes 422 HQ
+   - **Frame rate**
+   - **Render:** queue only, or queue and start rendering
+3. Resolve opens and builds the project by itself:
+   - a Team timeline, plus player timelines for each format
+   - color-coded markers
+   - your look at 50%
+   - the Oswald name bug
+   - framing keyframes as editable Fusion transforms
+   - render jobs
+
+Details and troubleshooting are in `resolve-bridge/README.md`. Transitions such as Noise 18 are still added by hand, because Resolve's script API can't place transitions.
+
 ## Files
 ```
 index.html              app shell and both tools
@@ -113,6 +133,9 @@ js/store.js             local storage, event bus, helpers
 js/shell.js             icon rail + spring drawer
 js/marker.js            Reel Marker
 js/vertical.js          Vertical Maker + ffmpeg script builder
+js/resolve.js           Send to Resolve: job file (.rbjob.lua) + dialog
+resolve-bridge/         Mac helper (reelbin:// links), installer, Resolve import script
+downloads/              the helper kit as a zip, linked from the app
 sw.js                   offline cache (bump VERSION on release)
 manifest.webmanifest    PWA install
 vercel.json             headers

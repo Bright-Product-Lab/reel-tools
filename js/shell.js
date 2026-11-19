@@ -6,6 +6,7 @@
   const ICON = {
     marker: '<path d="M5 3h14v18l-7-4.5L5 21z"/><path d="M9 8h6"/>',
     vertical: '<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M3 8v8M21 8v8"/>',
+    handoff: '<path d="M4 12h12"/><path d="m12 7 5 5-5 5"/><path d="M20 4v16"/>',
     library: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
     import: '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 19h16"/>',
     platform: '<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/>',
@@ -17,6 +18,7 @@
   const STEPS = [
     {id:'marker', label:'Reel Marker', icon:'marker', live:true},
     {id:'vertical', label:'Vertical Maker', icon:'vertical', live:true},
+    {id:'handoff', label:'Hand-off', icon:'handoff', live:true},
     {sec:'IN THE MAC APP'},
     {id:'library', label:'Library', icon:'library'},
     {id:'import', label:'Import and link', icon:'import'},
@@ -26,7 +28,7 @@
     {id:'preview', label:'Preview', icon:'preview'},
     {id:'export', label:'Export + recipe', icon:'export'}
   ];
-  const state = {view:'marker', status:{marker:'MARK PLAYS', vertical:'FRAME 9:16'}, done:{}, next:null};
+  const state = {view:'marker', status:{marker:'MARK PLAYS', vertical:'FRAME 9:16', handoff:'TO RESOLVE'}, done:{}, next:null};
 
   function render(){
     const wrap = $('railItems');
@@ -54,7 +56,7 @@
       wrap.appendChild(b);
     });
     const ticks = $('railTicks');
-    ticks.innerHTML = ['marker','vertical'].map(id => `<i class="tk ${state.done[id] ? 'd' : (state.view === id ? 'c' : '')}"></i>`).join('');
+    ticks.innerHTML = ['marker','vertical','handoff'].map(id => `<i class="tk ${state.done[id] ? 'd' : (state.view === id ? 'c' : '')}"></i>`).join('');
   }
 
   function go(id){

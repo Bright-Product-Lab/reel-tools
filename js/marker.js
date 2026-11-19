@@ -724,7 +724,7 @@
     if(!n){ RBS.toast('No marks to export yet', 'orange'); return; }
     RBS.saveFile('highlight_marks.json', fullJson(), 'application/json');
     RBS.toast('Exported ' + n + ' marks as highlight_marks.json', 'lime');
-    RBS.emit('step-done', {step: 'marker', next: 'vertical'});
+    RBS.emit('step-done', {step: 'marker', next: 'handoff'});
   });
   $('backupBtn').addEventListener('click', () => {
     const d = new Date(), pad = x => String(x).padStart(2, '0');
