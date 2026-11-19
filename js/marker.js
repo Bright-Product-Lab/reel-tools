@@ -123,6 +123,30 @@
     $('teamDrawerLabel').textContent = c ? 'Team ▸ ' + ((activeTeam() && activeTeam().name) || '') : 'Team setup';
     RBS.set(RBS.KEY.teamCollapsed, c ? '1' : '0');
   }
+  // Clip queue: collapsible like the team panel, state remembered.
+  function setQueueCollapsed(c){
+    $('queueDrawer').classList.toggle('collapsed', c);
+    $('queueDrawerToggle').setAttribute('aria-expanded', c ? 'false' : 'true');
+    RBS.set('rbs_queue_collapsed', c ? '1' : '0');
+  }
+  $('queueDrawerToggle').addEventListener('click', () => setQueueCollapsed(!$('queueDrawer').classList.contains('collapsed')));
+
+  // Marks: full-screen drawer opened from the Marks button (or M).
+  const marksOpen = () => $('marksDrawer').classList.contains('open');
+  function setMarksOpen(o){
+    $('marksDrawer').classList.toggle('open', o);
+    $('marksDrawer').setAttribute('aria-hidden', o ? 'false' : 'true');
+    $('marksToggle').setAttribute('aria-expanded', o ? 'true' : 'false');
+    document.body.classList.toggle('marks-open', o);
+    if(o){ renderMarks(); setTimeout(() => $('filterText').focus({preventScroll: true}), 350); }
+    else $('marksToggle').focus({preventScroll: true});
+  }
+  $('marksToggle').addEventListener('click', () => setMarksOpen(!marksOpen()));
+  $('marksClose').addEventListener('click', () => setMarksOpen(false));
+  RBS.on('view', () => { if(marksOpen()) setMarksOpen(false); });
+  // The drawer lives at <body> level so no transformed ancestor can trap the fixed overlay.
+  document.body.appendChild($('marksDrawer'));
+
   $('addPlayerBtn').addEventListener('click', () => { const t = activeTeam(); t.players.push({name: 'Player ' + (t.players.length + 1), number: ''}); saveTeams(); renderRoster(); });
 
   function renderRoster(){
@@ -445,6 +469,7 @@
     const c = activeClip();
     if(c){ c.duration = c.duration || video.duration; renderTicks(); }
     $('tcDuration').textContent = fmt(video.duration);
+    video.playbackRate = parseFloat($('speedSelect').value) || 1;   // a new source resets the rate
     updatePendingLabels();
   });
   video.addEventListener('timeupdate', paintHead);
@@ -484,7 +509,18 @@
   $('stepFwdBtn').addEventListener('click', () => frameStep(1));
   $('fsBackBtn').addEventListener('click', () => frameStep(-1));
   $('fsFwdBtn').addEventListener('click', () => frameStep(1));
-  $('speedSelect').addEventListener('change', e => { video.playbackRate = parseFloat(e.target.value); });
+  // One playback speed, two controls (standard view + fullscreen HUD).
+  function setSpeed(v){
+    const r = Math.min(2, Math.max(0.25, parseFloat(v) || 1));
+    video.defaultPlaybackRate = r; video.playbackRate = r;
+    $('speedSelect').value = String(r); $('fsSpeed').value = String(r);
+    if(isMax()) fsToast('Speed ' + r + '×');
+  }
+  const SPEEDS = [0.25, 0.5, 1, 1.5, 2];
+  const stepSpeed = d => { const i = SPEEDS.indexOf(video.playbackRate); setSpeed(SPEEDS[Math.min(SPEEDS.length - 1, Math.max(0, (i < 0 ? 2 : i) + d))]); };
+  $('speedSelect').addEventListener('change', e => setSpeed(e.target.value));
+  $('fsSpeed').addEventListener('change', e => setSpeed(e.target.value));
+  $('fsSpeed').addEventListener('pointerdown', e => e.stopPropagation());
   $('prevClipBtn').addEventListener('click', () => stepClip(-1));
   $('nextClipBtn').addEventListener('click', () => stepClip(1));
   ['fsPrevBtn', 'fsPrevEdge'].forEach(id => $(id).addEventListener('click', e => { e.stopPropagation(); stepClip(-1); }));
@@ -646,6 +682,7 @@
     let total = 0, broll = 0;
     clips.forEach(c => c.marks.forEach(m => { total++; if((m.category || 'Team') === 'B-roll') broll++; }));
     $('markCount').textContent = total;
+    $('marksBtnCount').textContent = total;
     $('markSplit').innerHTML = total ? `<span class="chip k-lime">${total - broll} team · ${broll} b-roll</span>` : '';
     $('marksEmptyHint').textContent = total === 0 ? 'No marks yet. Set in and out on a clip, tag it, then Add mark.' : (rows.length === 0 ? 'No marks match the current filter.' : '');
     rows.forEach(r => {
@@ -666,6 +703,7 @@
         if(c && c.url){
           const go = () => { video.currentTime = r.start; pendingIn = r.start; pendingOut = r.end; updatePendingLabels(); };
           video.readyState >= 1 ? go() : video.addEventListener('loadedmetadata', go, {once: true});
+          setMarksOpen(false);
           stage.scrollIntoView({behavior: 'smooth', block: 'center'});
         }
       });
@@ -829,8 +867,13 @@
   document.addEventListener('keydown', e => {
     if(RBS.currentView() !== 'marker' || RBS.drawerOpen()) return;
     if(e.key === 'Escape' && isMax()){ exitFullscreen(); return; }
+    if(e.key === 'Escape' && marksOpen()){ setMarksOpen(false); return; }
     const tag = (e.target.tagName || '').toUpperCase();
     if(tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA' || e.metaKey || e.ctrlKey || e.altKey) return;
+    if((e.key === 'm' || e.key === 'M') && !isMax()){ e.preventDefault(); setMarksOpen(!marksOpen()); return; }
+    if(marksOpen()) return;
+    if(e.key === '-' || e.key === '_'){ e.preventDefault(); stepSpeed(-1); return; }
+    if(e.key === '=' || e.key === '+'){ e.preventDefault(); stepSpeed(1); return; }
     wakeHud();
     const k = e.key;
     if(e.code === 'Space'){ e.preventDefault(); togglePlay(); }
@@ -860,6 +903,7 @@
   /* ------------------------------ boot ------------------------------ */
   loadState();
   setTeamCollapsed(RBS.get(RBS.KEY.teamCollapsed, '0') === '1');
+  setQueueCollapsed(RBS.get('rbs_queue_collapsed', '0') === '1');
   renderTeamSelect(); renderTeamFields(); renderRoster();
   renderZoomChips(); renderCategoryChips(); renderPlayChips(); renderDirectionChips(); renderPendingNotes();
   renderClipList(); renderMarks(); updatePendingLabels(); publish();

@@ -380,3 +380,32 @@ a.btn{text-decoration:none;color:inherit}
 .bstep .bt{flex:1;display:flex;flex-direction:column;gap:6px;font-size:13px}
 .bstep .bt small{color:var(--ink-4);font-size:12px}
 .bstep .ba{display:flex;gap:6px;flex-wrap:wrap}
+
+/* v2 layout: player gets the width; team + clip queue stack on the right; marks open as a drawer */
+.mk{grid-template-columns:minmax(0,1fr) 340px}
+@media (max-width:1100px){.mk{grid-template-columns:1fr}.mk .side-r{grid-column:auto;display:flex;flex-direction:column}}
+.mk .side-r{position:sticky;top:76px;max-height:calc(100vh - 92px);overflow-y:auto;scrollbar-width:thin}
+@media (max-width:1100px){.mk .side-r{position:static;max-height:none;overflow:visible}}
+.drawer-t .hdr{display:flex;align-items:center;gap:6px;padding-right:12px}
+.drawer-t .hdr .tgl-h{flex:1}
+.drawer-t .tgl-h .mono{color:var(--ink-4);letter-spacing:0}
+.drawer-t .pb.q{padding:0 4px 8px}
+.drawer-t .pb.q .tgl{padding:0 12px 10px}
+.drawer-t .pb.q .hint{padding:0 12px}
+.drawer-t .pb.q .cl{max-height:40vh}
+.marks-btn{width:100%;height:48px;justify-content:flex-start;padding:0 16px;font-size:15px;background:var(--glass-2);border:1px solid var(--line-2)}
+.marks-btn .sp{flex:1}
+.marks-btn .mcount{background:var(--lime);color:#0A0B0A;border-radius:999px;padding:1px 9px;font-size:12px;font-weight:600}
+.marks-btn[aria-expanded="true"]{background:var(--teal-bg);border-color:var(--teal)}
+.marks-drawer{position:fixed;top:0;right:0;bottom:0;left:var(--rail);z-index:58;padding:16px 24px 24px;display:flex;flex-direction:column;
+  background:rgba(10,11,10,.86);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  transform:translateX(102%);visibility:hidden;transition:transform .6s var(--spring),visibility 0s linear .6s}
+.marks-drawer.open{transform:none;visibility:visible;transition:transform .6s var(--spring),visibility 0s}
+.marks-drawer .marks{margin:0;flex:1;min-height:0;display:flex;flex-direction:column}
+.marks-drawer .tablew{flex:1;overflow:auto}
+@media (max-width:700px){.marks-drawer{left:0;padding:12px}}
+body.marks-open{overflow:hidden}
+.fs-speed{appearance:none;-webkit-appearance:none;background:transparent;border:0;color:var(--lime);font:600 14px 'JetBrains Mono',monospace;padding:0 2px;cursor:pointer}
+.fs-speed:focus{outline:none}
+.fs-speed option{background:#16170F;color:var(--ink)}
+.mk .side-r{grid-column:auto;display:flex;flex-direction:column}

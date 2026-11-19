@@ -50,23 +50,6 @@
   <!-- ===================== REEL MARKER ===================== -->
   <section class="view on" id="view-marker" aria-label="Reel Marker">
     <div class="mk">
-      <!-- clip queue -->
-      <div class="col side-l">
-        <div class="gp">
-          <div class="ph"><b>Clip queue</b><span class="mono" id="queueCount">0</span><span class="sp"></span>
-            <label class="btn sm icon ghost" for="clipInput" title="Add video files">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></label>
-            <label class="btn sm icon ghost" for="hintsInput" title="Load scene-detect hints.json">⌗</label>
-          </div>
-          <input id="clipInput" type="file" accept="video/*" multiple hidden>
-          <input id="hintsInput" type="file" accept=".json" multiple hidden>
-          <label class="tgl"><input type="checkbox" id="hideShortToggle"> Hide clips under <span id="shortThresholdLabel">3</span>s (<span id="shortCount">0</span> found)</label>
-          <div class="cl" id="clipList"></div>
-          <label class="dropzone" for="clipInput">Drop video clips (and hints.json) anywhere, or click to add</label>
-        </div>
-        <p class="hint" style="padding:0 6px">Team vs. B-roll is tagged per mark, not per clip, so one clip can hold both. Files never upload; marks re-attach by file name when you add the clip again.</p>
-      </div>
-
       <!-- player + builder -->
       <div class="col">
         <div class="gp">
@@ -95,6 +78,10 @@
                   <button class="fs-btn" id="fsNextBtn" title="Next clip (↓)">Clip ›</button>
                   <button class="fs-btn" id="fsBackBtn" title="Back one frame (←)">‹ fr</button>
                   <button class="fs-btn" id="fsFwdBtn" title="Forward one frame (→)">fr ›</button>
+                  <label class="fs-btn" title="Playback speed (− slower · = faster)">Speed
+                    <select class="fs-speed" id="fsSpeed" aria-label="Playback speed">
+                      <option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option>
+                    </select> ▾</label>
                   <button class="fs-btn teal" id="fsInZeroBtn" title="In at 0:00">⇤</button>
                   <button class="fs-btn teal" id="fsMarkInBtn" title="Set in (I)">In</button>
                   <button class="fs-btn teal" id="fsMarkOutBtn" title="Set out (O)">Out</button>
@@ -161,8 +148,11 @@
         </div>
       </div>
 
-      <!-- team + roster -->
+      <!-- right column: marks, team, clip queue -->
       <div class="col side-r">
+        <button class="btn marks-btn" id="marksToggle" aria-controls="marksDrawer" aria-expanded="false" title="Open marks (M)">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+          Marks <span class="mcount mono" id="marksBtnCount">0</span><span class="sp"></span><span class="key">M</span></button>
         <div class="gp drawer-t" id="teamDrawer">
           <button class="tgl-h" id="teamDrawerToggle" aria-expanded="true"><b style="color:var(--ink-2);font-weight:600" id="teamDrawerLabel">Team setup</b><span class="chev">⌄</span></button>
           <div class="pb">
@@ -184,10 +174,28 @@
             <p class="hint" style="margin-top:10px">Press 1–9 while reviewing to toggle a player. Jersey color identifies the team; the number identifies the player. Game date fills from the first clip's file date (not camera metadata), so edit it if it's off.</p>
           </div>
         </div>
+
+        <div class="gp drawer-t" id="queueDrawer">
+          <div class="hdr">
+            <button class="tgl-h" id="queueDrawerToggle" aria-expanded="true"><b style="color:var(--ink-2);font-weight:600">Clip queue</b><span class="mono" id="queueCount">0</span><span class="chev">⌄</span></button>
+            <label class="btn sm icon ghost" for="clipInput" title="Add video files">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></label>
+            <label class="btn sm icon ghost" for="hintsInput" title="Load scene-detect hints.json">⌗</label>
+          </div>
+          <input id="clipInput" type="file" accept="video/*" multiple hidden>
+          <input id="hintsInput" type="file" accept=".json" multiple hidden>
+          <div class="pb q">
+            <label class="tgl"><input type="checkbox" id="hideShortToggle"> Hide clips under <span id="shortThresholdLabel">3</span>s (<span id="shortCount">0</span> found)</label>
+            <div class="cl" id="clipList"></div>
+            <label class="dropzone" for="clipInput">Drop video clips (and hints.json) anywhere, or click to add</label>
+            <p class="hint">Team vs. B-roll is tagged per mark, so one clip can hold both. Files never upload; marks re-attach by file name.</p>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- marks -->
+    <!-- marks: full-screen drawer, opened from the Marks button -->
+    <div class="marks-drawer" id="marksDrawer" aria-hidden="true" role="dialog" aria-label="Marks">
     <div class="gp marks">
       <div class="ph"><b>Marks</b><span class="mono" id="markCount">0</span><span id="markSplit"></span><span class="sp"></span>
         <button class="btn sm orange" id="sendToResolveBtn" title="Hand these marks to DaVinci Resolve or another companion app">Hand-off ›</button>
@@ -196,6 +204,7 @@
         <button class="btn sm lime" id="exportJsonBtn" title="Export marks + rosters as JSON for the render pipeline">Export marks</button>
         <label class="btn sm ghost" for="importInput" title="Import marks (JSON or CSV) to resume or update">Import</label>
         <input id="importInput" type="file" accept=".json,.csv,application/json,text/csv" hidden>
+        <button class="btn sm icon ghost" id="marksClose" title="Close marks (M or Esc)" aria-label="Close marks">✕</button>
       </div>
       <div class="mtools">
         <input class="inp" id="filterText" placeholder="Filter by player, play, direction, note or clip…">
@@ -211,6 +220,7 @@
         <tbody id="marksBody"></tbody>
       </table></div>
       <p class="hint" id="marksEmptyHint" style="padding:0 16px 14px"></p>
+    </div>
     </div>
   </section>
 

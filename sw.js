@@ -1,5 +1,5 @@
 /* Offline shell cache. Bump VERSION on every release so phones pick up the new build. */
-const VERSION = 'rbs-v1.3.0';
+const VERSION = 'rbs-v2.0.0';
 const SHELL = ['./', './index.html', './css/studio.css', './js/store.js', './js/shell.js', './js/marker.js', './js/vertical.js', './js/handoff.js',
   './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
 self.addEventListener('install', e => {
