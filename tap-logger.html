@@ -31,11 +31,24 @@
   .seg button.on{background:var(--text);color:var(--bg)}
   .sync{width:100%;padding:16px;background:var(--panel);border:2px solid var(--gold);color:var(--gold);font-weight:800;font-size:16px;margin:8px 0}
   .sync small{display:block;font-weight:500;color:var(--grey);font-size:12px;margin-top:2px}
-  .mark{min-height:34vh;width:100%;background:var(--red);color:#fff;font-size:44px;font-weight:900;letter-spacing:.06em;
-    box-shadow:0 6px 0 var(--red-dk);margin:8px 0 14px;transition:transform .05s}
-  .mark:active{transform:translateY(4px);box-shadow:0 2px 0 var(--red-dk)}
-  .mark:disabled{background:var(--line);box-shadow:none;color:var(--grey);font-size:20px}
-  .mark .sub{display:block;font-size:14px;font-weight:600;opacity:.85;letter-spacing:0}
+  button{touch-action:manipulation}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0 6px}
+  .hl{min-height:14vh;padding:6px 4px;font-weight:900;font-size:17px;line-height:1.1;color:#fff;
+    box-shadow:0 4px 0 rgba(0,0,0,.45);transition:transform .05s;word-break:break-word}
+  .hl:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.45)}
+  .hl.hot{background:var(--red)}
+  .hl.cold{background:var(--blue)}
+  .hl.neutral{background:#3a3a40}
+  .hl.wild{background:var(--panel);border:2px solid var(--gold);color:var(--gold);box-shadow:0 4px 0 rgba(0,0,0,.45)}
+  .hl.flash{outline:3px solid var(--green)}
+  .hl:disabled{background:var(--panel);border:1px solid var(--line);color:var(--grey);box-shadow:none}
+  .note{font-size:12px;color:var(--grey);text-align:center;margin:0 0 10px;min-height:16px}
+  .note.warn{color:var(--gold)}
+  .lastmark{font-size:13px;color:var(--green);font-weight:700;text-align:center;margin:0 0 8px;min-height:18px}
+  #editBox{background:var(--panel);border:1px solid var(--gold);border-radius:12px;padding:8px 10px;margin:4px 0 10px}
+  #editBox .label{margin:2px 0 6px;color:var(--gold)}
+  #editBox input{width:100%;margin:3px 0}
+  .actions .txt{flex:0 0 auto;background:transparent;border:0;color:var(--gold);font-size:12px;text-decoration:underline;padding:14px 8px}
   .tagbar{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
   .tagbar button{flex:0 0 auto;min-width:52px;padding:12px 10px;background:var(--panel);border:1px solid var(--line);font-weight:800;font-size:17px}
   .tagbar button.hit{border-color:var(--green);color:var(--green)}
@@ -77,9 +90,21 @@
   <small>Start recording, hold this screen to the lens, then tap. It flashes for 2 seconds.</small>
 </button>
 
+<div class="label">Sport</div>
+<div class="seg" id="sseg"></div>
+<div class="label">Quarter</div>
 <div class="seg" id="qseg"></div>
 
-<button class="mark" id="markBtn" disabled>Sync first<span class="sub">Tap SYNC after you press record</span></button>
+<div class="grid" id="hlGrid"></div>
+<div class="note" id="syncNote"></div>
+<div class="lastmark" id="lastMark"></div>
+
+<div id="editBox" style="display:none">
+  <div class="label" id="editLabel">Wildcard names</div>
+  <input id="w0" maxlength="18" placeholder="Highlight" autocomplete="off">
+  <input id="w1" maxlength="18" placeholder="Highlight" autocomplete="off">
+  <input id="w2" maxlength="18" placeholder="Highlight" autocomplete="off">
+</div>
 
 <div class="label">Tag last mark (optional)</div>
 <div class="tagbar" id="tagbar"></div>
@@ -98,6 +123,7 @@
   <button class="warn" id="undoBtn">Undo last</button>
   <button class="go" id="exportBtn">Export log</button>
   <button id="newBtn">New game</button>
+  <button class="txt" id="editBtn">Edit buttons</button>
 </div>
 
 <div id="exportBox" style="display:none">
@@ -108,7 +134,7 @@
 <div class="log" id="log"></div>
 
 <p class="help">
-  Re-sync every time you start a new recording on the camera. Each tap marks a play; the script cuts ~12 s before and ~6 s after it.
+  Re-sync every time you start a new recording on the camera. Tap the button that matches the play. The script cuts a window around the tap that depends on the button (a long rally gets more lead-in than a block).
   The log saves on this phone as you go. Tap <b>Export log</b> after the game and AirDrop or save the file to your Mac.
 </p>
 
@@ -119,10 +145,46 @@
 (function(){
   const KEY = 'tapeman_tap_log_v1';
   const QS = ['Q1','Q2','Q3','Q4','OT'];
-  let state = load() || fresh();
+  // Highlight buttons per sport. pre/post = seconds kept before/after the tap. tone: hot=scoring, cold=defense, neutral=other.
+  // Edit these numbers to change clip windows; the logger writes them into each mark.
+  const SPORTS = {
+    football:  {label:'Football',   types:[
+      {k:'touchdown', l:'Touchdown',  tone:'hot',     pre:15, post:8},
+      {k:'big-run',   l:'Big Run',    tone:'hot',     pre:12, post:6},
+      {k:'catch',     l:'Catch',      tone:'neutral', pre:12, post:6},
+      {k:'sack',      l:'Sack',       tone:'cold',    pre:10, post:6},
+      {k:'turnover',  l:'INT / Fumble',tone:'cold',   pre:12, post:8},
+      {k:'big-hit',   l:'Big Hit',    tone:'cold',    pre:8,  post:5}]},
+    basketball:{label:'Basketball', types:[
+      {k:'three',     l:'3-Pointer',  tone:'hot',     pre:10, post:5},
+      {k:'drive',     l:'Drive / Finish',tone:'hot',  pre:10, post:5},
+      {k:'assist',    l:'Assist',     tone:'neutral', pre:10, post:5},
+      {k:'block',     l:'Block',      tone:'cold',    pre:8,  post:5},
+      {k:'steal',     l:'Steal',      tone:'cold',    pre:8,  post:6},
+      {k:'rebound',   l:'Rebound',    tone:'neutral', pre:8,  post:5}]},
+    volleyball:{label:'Volleyball', types:[
+      {k:'kill',      l:'Kill',       tone:'hot',     pre:8,  post:4},
+      {k:'ace',       l:'Ace',        tone:'hot',     pre:8,  post:4},
+      {k:'set',       l:'Set',        tone:'neutral', pre:8,  post:4},
+      {k:'block',     l:'Block',      tone:'cold',    pre:8,  post:4},
+      {k:'dig',       l:'Dig',        tone:'cold',    pre:10, post:5},
+      {k:'rally',     l:'Long Rally', tone:'neutral', pre:25, post:3}]}
+  };
+  const SPORT_KEYS = ['football','basketball','volleyball'];
+  const WILD = {pre:12, post:6, def:'Highlight'};
+  let state = migrate(load() || fresh());
   let wakeLock = null;
 
-  function fresh(){ return {app:'tapeman-tapper', version:1, game:'', roster:'', quarter:'Q1', created:Date.now(), events:[]}; }
+  function fresh(){ return {app:'tapeman-tapper', version:2, game:'', roster:'', quarter:'Q1', sport:'basketball',
+    wild:{football:['','',''], basketball:['','',''], volleyball:['','','']}, created:Date.now(), events:[]}; }
+  function migrate(st){
+    st.events=(st.events||[]); st.events.forEach(e=>{ if(e.type==='mark' && typeof e.jersey!=='string') e.jersey=''; });
+    if(typeof st.roster!=='string') st.roster=''; if(typeof st.game!=='string') st.game=''; if(!st.quarter) st.quarter='Q1';
+    if(!st.sport || !SPORTS[st.sport]) st.sport='basketball';
+    if(!st.wild) st.wild={};
+    SPORT_KEYS.forEach(k=>{ if(!Array.isArray(st.wild[k])) st.wild[k]=['','','']; });
+    st.version=2; return st;
+  }
   function load(){ try{ return JSON.parse(localStorage.getItem(KEY)); }catch(e){ return null; } }
   function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
 
@@ -166,13 +228,43 @@
     }));
   };
 
-  // MARK
-  $('markBtn').onclick = () => {
+  // Highlight buttons (each tap = one mark with a type)
+  function buttonsFor(sp){
+    const fixed = SPORTS[sp].types.map(t=>({k:t.k, l:t.l, tone:t.tone, pre:t.pre, post:t.post, wild:false}));
+    const wild = [0,1,2].map(i=>({k:'wild'+(i+1), l:((state.wild[sp][i]||'').trim() || WILD.def), tone:'wild', pre:WILD.pre, post:WILD.post, wild:true}));
+    return fixed.concat(wild);
+  }
+  function addMark(b, el){
     if(!syncs().length) return;
     const t = Date.now();
-    state.events.push({type:'mark', t:t, q:state.quarter, jersey:'', id:'m'+(marks().length+1)});
-    save(); buzz(40); toast('Marked '+state.quarter+' · '+fmtClock(t)); render();
-  };
+    state.events.push({type:'mark', t:t, q:state.quarter, jersey:'', id:'m'+(marks().length+1),
+      sport:state.sport, hl:b.k, label:b.l, pre:b.pre, post:b.post});
+    save(); buzz(40);
+    if(el){ el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),250); }
+    toast(b.l+' · '+state.quarter+' · '+fmtClock(t)); render();
+  }
+  function renderGrid(){
+    const g = $('hlGrid'); g.innerHTML='';
+    const ok = syncs().length > 0;
+    buttonsFor(state.sport).forEach(b=>{
+      const el=document.createElement('button'); el.className='hl '+b.tone; el.textContent=b.l; el.disabled=!ok;
+      el.onclick=()=>addMark(b, el); g.appendChild(el);
+    });
+    const n=$('syncNote'); n.textContent = ok ? '' : 'Tap SYNC after you press record, then the buttons unlock'; n.classList.toggle('warn', !ok);
+  }
+
+  // Sport selector
+  const sseg = $('sseg');
+  SPORT_KEYS.forEach(k=>{ const b=document.createElement('button'); b.textContent=SPORTS[k].label; b.dataset.k=k;
+    b.onclick=()=>{ state.sport=k; save(); render(); }; sseg.appendChild(b); });
+
+  // Edit wildcard names (small text button in the utility row)
+  const editBox=$('editBox'), wIn=[$('w0'),$('w1'),$('w2')];
+  function fillEdit(){ $('editLabel').textContent = SPORTS[state.sport].label+' wildcard names (blank = "Highlight")';
+    wIn.forEach((el,i)=>{ el.value = state.wild[state.sport][i]||''; }); }
+  wIn.forEach((el,i)=>{ el.oninput=()=>{ state.wild[state.sport][i]=el.value; save(); renderGrid(); }; });
+  $('editBtn').onclick=()=>{ const open = editBox.style.display==='none'; editBox.style.display = open?'block':'none';
+    $('editBtn').textContent = open ? 'Done editing' : 'Edit buttons'; if(open) fillEdit(); };
 
   // Tag last mark
   function renderTags(){
@@ -209,7 +301,7 @@
   let newArm = 0;
   $('newBtn').onclick = () => {
     if(Date.now()-newArm > 3000){ newArm=Date.now(); $('newBtn').textContent='Export first? Tap again'; setTimeout(()=>{$('newBtn').textContent='New game';},3000); return; }
-    const keepRoster = state.roster; state = fresh(); state.roster = keepRoster; save();
+    const keepRoster = state.roster, keepSport = state.sport, keepWild = state.wild; state = fresh(); state.roster = keepRoster; state.sport = keepSport; state.wild = keepWild; save();
     gameEl.value=''; rosterEl.value=keepRoster; $('newBtn').textContent='New game'; render();
   };
 
@@ -239,16 +331,18 @@
 
   function render(){
     [...qseg.children].forEach(b=>b.classList.toggle('on', b.textContent===state.quarter));
+    [...sseg.children].forEach(b=>b.classList.toggle('on', b.dataset.k===state.sport));
     const s = syncs(), m = marks();
-    const mb = $('markBtn');
-    if(s.length){ mb.disabled=false; mb.innerHTML='MARK<span class="sub">'+state.quarter+' · tap at the moment of the play</span>'; }
-    else { mb.disabled=true; mb.innerHTML='Sync first<span class="sub">Tap SYNC after you press record</span>'; }
+    renderGrid();
+    if(editBox.style.display!=='none') fillEdit();
+    const lm = m.slice(-1)[0];
+    $('lastMark').textContent = lm ? 'Last: '+(lm.label||'Mark')+' · '+lm.q+(lm.jersey?' · #'+lm.jersey.split(' ').join(' #'):'') : '';
     $('dot').classList.toggle('on', !!s.length);
     $('recText').textContent = s.length ? 'Synced #'+s.length : 'Not synced';
     $('nMarks').textContent = m.length; $('nSync').textContent = s.length;
     $('log').innerHTML = state.events.slice(-30).reverse().map(e => e.type==='sync'
       ? '<div class="s">⟲ Sync #'+e.n+' · '+fmtClock(e.t)+'</div>'
-      : '<div>● '+e.q+' · '+fmtClock(e.t)+(e.jersey?' · #'+e.jersey.split(' ').join(' #'):'')+'</div>').join('') || '<div>No events yet</div>';
+      : '<div>● '+(e.label||'Mark')+' · '+e.q+' · '+fmtClock(e.t)+(e.jersey?' · #'+e.jersey.split(' ').join(' #'):'')+'</div>').join('') || '<div>No events yet</div>';
     renderTags();
   }
   setInterval(()=>{ const s=syncs().slice(-1)[0]; if(!s){$('sinceSync').textContent='--:--';return;}

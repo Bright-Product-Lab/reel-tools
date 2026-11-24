@@ -19,7 +19,9 @@ Usage
   python3 tapecut.py taplog.json CAM1.MP4 CAM2.MP4 ...   (files in recording order)
 
 Useful options
-  --pre 12 --post 6        seconds kept before / after each tap (default 12 / 6)
+  --pre N --post N         force one window for every clip. Without these, each clip uses the
+                           window its highlight button carries in the log (e.g. Long Rally 25/3,
+                           Block 8/5); old logs with no window fall back to 12 / 6
   --hw                     use the Mac's hardware encoder (much faster on Apple Silicon)
   --dry-run                only detect syncs and print the clip plan, no cutting
   --sync FILE=SECONDS      manual override: the first white flash is at SECONDS in FILE
@@ -116,7 +118,7 @@ def encoder_args(hw, quality):
 def main():
     ap = argparse.ArgumentParser(description="Cut Tape Man clips from a tap log.")
     ap.add_argument("log"); ap.add_argument("files", nargs="+")
-    ap.add_argument("--pre", type=float, default=12); ap.add_argument("--post", type=float, default=6)
+    ap.add_argument("--pre", type=float, default=None); ap.add_argument("--post", type=float, default=None)
     ap.add_argument("--out", default="clips"); ap.add_argument("--scan", type=float, default=300)
     ap.add_argument("--hw", action="store_true"); ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--sync", action="append", default=[], help="FILE=SECONDS manual flash time")
@@ -166,14 +168,18 @@ def main():
         if not seg:
             skipped += 1; continue
         vt = (m["t"] - seg["start_ms"]) / 1000
-        st, en = max(0.0, vt - a.pre), min(seg["dur"], vt + a.post)
+        pre = a.pre if a.pre is not None else float(m.get("pre", 12))
+        post = a.post if a.post is not None else float(m.get("post", 6))
+        st, en = max(0.0, vt - pre), min(seg["dur"], vt + post)
         plan.append({"clip_id": f"c{i:03d}", "quarter": m.get("q", ""), "jersey": m.get("jersey", ""),
+                     "sport": m.get("sport", ""), "highlight": m.get("label", "") or "Mark",
+                     "pre_s": pre, "post_s": post,
                      "tap_local": datetime.fromtimestamp(m["t"] / 1000).strftime("%H:%M:%S"),
                      "file": seg["name"], "src": seg["path"], "tap_s": round(vt, 2),
                      "start_s": round(st, 2), "end_s": round(en, 2), "len_s": round(en - st, 1)})
     print(f"\nCLIP PLAN  {len(plan)} clips" + (f", {skipped} taps fell outside any recording" if skipped else ""))
     for c in plan:
-        print(f"  {c['clip_id']}  {c['quarter']:3s}  #{c['jersey'] or '-':6s} {c['file']:24s} "
+        print(f"  {c['clip_id']}  {c['quarter']:3s}  {c['highlight'][:14]:14s} #{c['jersey'] or '-':6s} {c['file']:24s} "
               f"{c['start_s']:8.1f}-{c['end_s']:8.1f}s  ({c['len_s']}s)")
     if a.dry_run:
         return
@@ -186,7 +192,9 @@ def main():
     ff = font_file()
     wm = "TAPE MAN PREVIEW"
     for n, c in enumerate(plan, 1):
-        tag = c["quarter"] + (("_" + c["jersey"].replace(" ", "-")) if c["jersey"] else "")
+        hl = "".join(ch if ch.isalnum() else "-" for ch in c["highlight"]).strip("-").lower()
+        while "--" in hl: hl = hl.replace("--", "-")
+        tag = c["quarter"] + "_" + hl + (("_" + c["jersey"].replace(" ", "-")) if c["jersey"] else "")
         stem = f"{slug}_{c['clip_id']}_{tag}"
         clean = os.path.join(clean_dir, stem + ".mp4")
         cmd = ["ffmpeg", "-v", "error", "-y", "-ss", str(c["start_s"]), "-i", c["src"], "-t", str(c["end_s"] - c["start_s"]),
@@ -207,7 +215,7 @@ def main():
             c["preview"] = prev
         print(f"  [{n}/{len(plan)}] {stem}")
 
-    fields = ["clip_id", "quarter", "jersey", "tap_local", "file", "tap_s", "start_s", "end_s", "len_s", "clean", "preview"]
+    fields = ["clip_id", "sport", "highlight", "quarter", "jersey", "tap_local", "file", "tap_s", "start_s", "end_s", "len_s", "clean", "preview"]
     with open(os.path.join(a.out, "manifest.csv"), "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=fields, extrasaction="ignore"); w.writeheader(); w.writerows(plan)
     json.dump({"game": game, "clips": plan}, open(os.path.join(a.out, "manifest.json"), "w"), indent=2)
